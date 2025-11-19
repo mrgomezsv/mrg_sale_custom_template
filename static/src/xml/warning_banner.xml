@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="mrg_custom_warning_banner.WarningBanner" owl="1">
+        <div t-if="state.enabled"
+             class="o_warning_banner_systray"
+             style="background: linear-gradient(135deg, #ffd700, #ffed4e); 
+                    color: #333; 
+                    padding: 8px 16px; 
+                    font-weight: bold; 
+                    border-radius: 6px; 
+                    margin: 4px 8px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    border-left: 4px solid #ffb300;
+                    animation: pulse 2s infinite, blink 1.5s infinite;">
+            <i class="fa fa-exclamation-triangle me-2"></i>
+            <span t-esc="state.warningText or '⚠️ FACTURA PENDIENTE DE PAGO'"/>
+        </div>
+        
+        <style>
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
+            }
+            
+            @keyframes blink {
+                0% { opacity: 1; }
+                25% { opacity: 0.3; }
+                50% { opacity: 1; }
+                75% { opacity: 0.7; }
+                100% { opacity: 1; }
+            }
+            
+            .o_warning_banner_systray:hover {
+                transform: scale(1.05);
+                transition: transform 0.2s ease;
+                animation-play-state: paused;
+            }
+        </style>
+    </t>
+</templates>

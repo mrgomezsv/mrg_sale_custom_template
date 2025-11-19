@@ -1,0 +1,934 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="report_saleorder_document_custom" inherit_id="sale.report_saleorder_document">
+        <xpath expr="." position="replace">
+            <t t-name="sale.report_saleorder_document">
+
+                <t t-call="web.html_container">
+
+                    <t t-set="doc" t-value="doc.with_context(lang=doc.partner_id.lang)"/>
+
+                    <t t-set="forced_vat" t-value="doc.fiscal_position_id.foreign_vat"/>
+
+                    <t t-set="lines_to_report" t-value="doc._get_order_lines_to_report()"/>
+
+                    <t t-set="display_discount" t-value="any(l.discount for l in lines_to_report)"/>
+
+
+
+                    <style>
+                        /* ============================================
+                           PAGE LAYOUT
+                           ============================================ */
+                        body {
+                            margin: 0;
+                            padding: 0;
+                        }
+
+                        .page {
+                            border: 2px solid #000;
+                            padding: 10px 28px;
+                            margin: 0 12px 0 12px;
+                            margin-bottom: 20px;
+                            box-sizing: border-box;
+                            background: #fff;
+                            position: relative;
+                            min-height: 880px;
+                            page-break-after: always;
+                            display: block;
+                            overflow: visible;
+                        }
+
+                        @page {
+                            size: Letter;
+                            margin: 0;
+                        }
+
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            height: 100%;
+                        }
+
+                        .page-content {
+                            position: relative;
+                            z-index: 1;
+                        }
+
+                        .page-footer {
+                            width: 100%;
+                            margin: 30px 0 0 0;
+                            padding-bottom: 0;
+                            page-break-inside: avoid;
+                        }
+
+                        .page-footer .consideraciones {
+                            margin-top: 30px;
+                            margin-bottom: 20px;
+                        }
+
+                        .page-footer .signatures-section {
+                            margin-top: 60px;
+                            margin-bottom: 20px;
+                        }
+
+                        .page-footer .footer-services {
+                            margin-top: 0;
+                            margin-bottom: 0;
+                        }
+
+                        /* ============================================
+                           HEADER SECTION
+                           ============================================ */
+                        .cotizacion-header {
+                            margin-bottom: 12px;
+                            overflow: hidden;
+                            display: block !important;
+                            visibility: visible !important;
+                        }
+
+                        .logo-section {
+                            float: left;
+                            width: 40%;
+                        }
+
+                        .logo-container {
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                        }
+
+                        .date-section {
+                            clear: left;
+                            margin-top: 5px;
+                            font-size: 13px;
+                        }
+
+                        .company-info {
+                            float: right;
+                            width: 55%;
+                            text-align: right;
+                            clear: right;
+                        }
+
+                        .company-name {
+                            font-size: 20px;
+                            font-weight: bold;
+                            color: #8B0000;
+                            margin-bottom: 6px;
+                            text-align: right;
+                        }
+
+                        .company-details {
+                            font-size: 11px;
+                            line-height: 1.35;
+                            text-align: right;
+                            color: #333;
+                        }
+
+                        .header-separator {
+                            clear: both;
+                            border-top: 1px solid #000;
+                            margin-top: 10px;
+                            margin-bottom: 10px;
+                        }
+
+                        /* ============================================
+                           CLIENT INFO SECTION
+                           ============================================ */
+                        .client-info {
+                            margin-bottom: 16px;
+                        }
+
+                        .client-name {
+                            font-size: 16px;
+                            font-weight: bold;
+                            margin-bottom: 4px;
+                        }
+
+                        .client-contact {
+                            font-size: 13px;
+                            margin-bottom: 8px;
+                        }
+
+                        .intro-text {
+                            font-size: 12px;
+                            margin-bottom: 18px;
+                        }
+
+                        /* ============================================
+                           PRODUCTS TABLE
+                           ============================================ */
+                        .productos-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            border: 2px solid #000;
+                            margin-bottom: 0;
+                        }
+
+                        .productos-table th,
+                        .productos-table td {
+                            padding: 8px;
+                            font-size: 12px;
+                        }
+
+                        .productos-table th {
+                            background-color: #fff;
+                            font-weight: bold;
+                            border: 1px solid #000;
+                            border-bottom: 2px solid #000;
+                        }
+
+                        .productos-table td {
+                            border-left: 1px solid #000;
+                            border-right: 1px solid #000;
+                            border-top: none;
+                            border-bottom: 1px solid #000;
+                        }
+
+                        .productos-table .productos-body tr:last-child td {
+                            border-bottom: none !important;
+                        }
+
+                        .productos-table .descuento-body tr td {
+                            border-top: none !important;
+                            border-bottom: 2px solid #000 !important;
+                        }
+
+                        /* Table Column Widths */
+                        .th-cant {
+                            width: 8%;
+                            text-align: center;
+                        }
+
+                        .th-desc {
+                            width: 54%;
+                            text-align: center;
+                        }
+
+                        .th-unit {
+                            width: 19%;
+                            text-align: center;
+                        }
+
+                        .th-total {
+                            width: 19%;
+                            text-align: center;
+                        }
+
+                        /* Table Cell Alignment */
+                        .td-cant {
+                            text-align: center;
+                        }
+
+                        .td-desc {
+                            text-align: left;
+                        }
+
+                        .td-unit,
+                        .td-total {
+                            text-align: right;
+                        }
+
+                        /* Discount Row */
+                        .descuento-row td {
+                            border-top: none;
+                            border-bottom: 2px solid #000;
+                        }
+
+                        .descuento-text {
+                            text-align: left;
+                            font-weight: normal;
+                        }
+
+                        .dotted-line {
+                            display: inline-block;
+                            width: 160px;
+                            border-bottom: 1px dotted #000;
+                            margin-left: 10px;
+                            vertical-align: middle;
+                        }
+
+                        /* ============================================
+                           SUMMARY TABLE
+                           ============================================ */
+                        .summary-table {
+                            width: 100%;
+                            margin-left: 0;
+                            border-collapse: collapse;
+                            margin-bottom: 18px;
+                            border: 2px solid #000;
+                            border-top: none;
+                        }
+
+                        .summary-table td {
+                            border: 1px solid #000;
+                            padding: 4px 8px;
+                            font-size: 12px;
+                            text-align: right;
+                            line-height: 1.2;
+                        }
+
+                        .summary-table td:first-child {
+                            width: 65%;
+                        }
+
+                        .summary-table td:last-child {
+                            width: 35%;
+                        }
+
+                        .summary-label {
+                            text-align: left;
+                            padding-left: 8px;
+                            font-weight: normal;
+                        }
+
+                        .total-final {
+                            font-weight: bold;
+                        }
+
+                        /* ============================================
+                           CONSIDERACIONES SECTION
+                           ============================================ */
+                        .consideraciones {
+                            margin-top: 0px;
+                            margin-bottom: 20px;
+                            border: 2px solid #000;
+                            border-top: none;
+                            padding: 10px 15px;
+                        }
+
+                        .consideraciones-title {
+                            font-weight: bold;
+                            font-size: 12px;
+                            margin-bottom: 3px;
+                            margin-top: 0;
+                        }
+
+                        .consideraciones-list {
+                            margin-left: 0;
+                            padding-left: 20px;
+                            font-size: 11px;
+                            line-height: 1.4;
+                            margin-top: 3px;
+                            margin-bottom: 8px;
+                        }
+
+                        .consideraciones-list li {
+                            margin-bottom: 2px;
+                        }
+
+                        /* ============================================
+                           SIGNATURES SECTION
+                           ============================================ */
+                        .signatures-section {
+                            margin-top: 25px;
+                            margin-bottom: 20px;
+                            overflow: hidden;
+                        }
+
+                        .signature-left {
+                            float: left;
+                            width: 48%;
+                            text-align: center;
+                        }
+
+                        .signature-right {
+                            float: right;
+                            width: 48%;
+                            text-align: center;
+                        }
+
+                        .signature-line {
+                            border-top: 1px solid #000;
+                            margin-top: 100px;
+                            padding-top: 3px;
+                        }
+
+                        .signature-name {
+                            font-size: 11px;
+                            font-weight: normal;
+                        }
+
+                        .signature-title {
+                            font-size: 11px;
+                            margin-top: 2px;
+                            font-weight: normal;
+                        }
+
+                        /* ============================================
+                           FOOTER
+                           ============================================ */
+                        .footer-services {
+                            text-align: center;
+                        }
+
+                        .footer-services div {
+                            margin-bottom: 1px;
+                        }
+
+                        /* ============================================
+                           OVERRIDES - Hide Default Odoo Headers
+                           ============================================ */
+                        .logo-text,
+                        .logo-slogan {
+                            display: none !important;
+                        }
+
+                        .oe_structure,
+                        .header,
+                        .o_report_layout_standard .header,
+                        .o_report_layout_standard .oe_structure,
+                        div.header,
+                        table.header,
+                        .o_report_layout_standard div.header,
+                        .o_report_layout_standard table.header,
+                        .main-content .header,
+                        .main-content .oe_structure,
+                        body > .header,
+                        body > .oe_structure,
+                        .header tbody,
+                        .header thead,
+                        .header tr,
+                        .header td,
+                        .header th {
+                            display: none !important;
+                            visibility: hidden !important;
+                            height: 0 !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            overflow: hidden !important;
+                            line-height: 0 !important;
+                            font-size: 0 !important;
+                        }
+
+                        .header table,
+                        .header div,
+                        .header p,
+                        .oe_structure table,
+                        .oe_structure div {
+                            display: none !important;
+                        }
+
+                        /* ============================================
+                           OVERRIDES - Header Alignment
+                           ============================================ */
+                        .o_report_layout_standard .header table tr td:last-child,
+                        .o_report_layout_standard .header .col-6:last-child,
+                        .o_report_layout_standard .header .col-4:last-child,
+                        .o_report_layout_standard .header .col-3:last-child,
+                        .header table tr td:last-child,
+                        .header .col-6:last-child,
+                        .header .col-4:last-child {
+                            text-align: right !important;
+                        }
+
+                        .o_report_layout_standard .header table tr td:last-child p,
+                        .o_report_layout_standard .header .col-6:last-child p,
+                        .o_report_layout_standard .header .col-4:last-child p,
+                        .o_report_layout_standard .header .col-3:last-child p,
+                        .header table tr td:last-child p,
+                        .header .col-6:last-child p,
+                        .header .col-4:last-child p {
+                            text-align: right !important;
+                        }
+
+                        .header table tr td:first-child,
+                        .header .col-6:first-child,
+                        .header .col-4:first-child {
+                            text-align: left !important;
+                        }
+                    </style>
+
+
+
+                    <div class="page">
+
+                        <div class="page-content">
+
+                        <div class="cotizacion-header">
+
+                            <div class="logo-section">
+                                <div style="display: flex; align-items: flex-start;">
+                                    <div t-if="doc.company_id.logo" style="margin-right: 10px;">
+                                        <img t-att-src="image_data_uri(doc.company_id.logo)" style="max-height: 80px; max-width: 200px;"/>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="company-info">
+
+                                <div class="company-name" t-field="doc.company_id.name"/>
+
+                                <div class="company-details">
+
+<!-- Dirección -->
+
+<strong style="white-space: normal; display:inline-block;">
+
+  <span style="display:inline;" t-field="doc.company_id.street"/> 
+
+  <t t-if="doc.company_id.street2">, <span style="display:inline;" t-field="doc.company_id.street2"/></t>
+
+  <t t-if="doc.company_id.city">, <span style="display:inline;" t-field="doc.company_id.city"/></t>
+
+  <t t-if="doc.company_id.state_id">, <span style="display:inline;" t-field="doc.company_id.state_id.name"/></t>
+
+  <t t-if="doc.company_id.country_id">, <span style="display:inline;" t-esc="doc.company_id.country_id.name"/></t>
+
+</strong>
+
+<br/>
+
+<!-- Teléfonos y correos -->
+
+<span style="white-space: normal; display:inline-block;">
+
+  <t t-if="doc.company_id.phone">
+
+    <strong>Tel: </strong><span style="display:inline;" t-field="doc.company_id.phone"/>
+
+  </t>
+
+  <t t-if="doc.company_id.mobile">
+
+    <t t-if="doc.company_id.phone"> / </t>
+
+    <span style="display:inline;" t-field="doc.company_id.mobile"/>
+
+  </t>
+
+  <t t-if="doc.company_id.email">
+
+    <t t-if="doc.company_id.phone or doc.company_id.mobile"> — </t>
+
+    <strong>Email: </strong><span style="display:inline;" t-field="doc.company_id.email"/>
+
+  </t>
+
+</span>
+
+
+
+
+
+                                </div>
+
+                            </div>
+
+                            <div class="header-separator"/>
+
+                        </div>
+
+
+
+                        <div class="client-info">
+                            <t t-if="doc.create_date">
+                                <span t-esc="doc.create_date.strftime('%d/%m/%Y')"/>
+                            </t>
+                            <br/>
+                            <br/>
+                            <div class="client-name" t-field="doc.partner_id.name"/>
+                            <div class="client-contact" t-if="doc.partner_id.comment">
+                                <strong><span t-field="doc.partner_id.comment"/></strong>
+                            </div>
+                            <div class="intro-text">
+                                Mediante la presente le envío la cotización que me solicitó para la fabricación del siguiente equipo:
+                            </div>
+                        </div>
+
+
+
+                        <div class="row mt-4 mb-4" id="informations" style="display: none;">
+
+                            <div t-if="doc.client_order_ref" class="col-auto col-3 mw-100 mb-2" name="informations_reference">
+
+                                <strong>Your Reference:</strong>
+
+                                <p class="m-0" t-field="doc.client_order_ref"/>
+
+                            </div>
+
+                            <div t-if="doc.date_order" class="col-auto col-3 mw-100 mb-2" name="informations_date">
+
+                                <strong t-if="doc.state in ['draft', 'sent']">Quotation Date:</strong>
+
+                                <strong t-else="">Order Date:</strong>
+
+                                <p class="m-0" t-field="doc.date_order" t-options="{'widget': 'date'}"/>
+
+                            </div>
+
+                            <div class="col-auto col-3 mw-100 mb-2" name="expiration_date">
+
+                                <t t-if="doc.validity_date and doc.state in ['draft', 'sent']">
+
+                                    <strong>Expiration:</strong>
+
+                                    <p class="m-0" t-field="doc.validity_date"/>
+
+                                </t>
+
+                            </div>
+
+                            <div t-if="doc.user_id.name" class="col-auto col-3 mw-100 mb-2">
+
+                                <strong>Salesperson:</strong>
+
+                                <p class="m-0" t-field="doc.user_id"/>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <table class="productos-table">
+
+                            <thead>
+
+                                <tr>
+
+                                    <th class="th-cant" name="th_quantity">Cant.</th>
+
+                                    <th class="th-desc" name="th_description">Descripción</th>
+
+                                    <th class="th-unit" name="th_priceunit">Costo Unit</th>
+
+                                    <th name="th_discount" t-if="display_discount" class="text-end" style="display: none;">
+
+                                        <span>Disc.%</span>
+
+                                    </th>
+
+                                    <th name="th_taxes" class="text-end" style="display: none;">Taxes</th>
+
+                                    <th class="th-total" name="th_subtotal">Costo Total</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody class="productos-body">
+
+        <t t-set="total_descuento" t-value="0"/>
+
+        <t t-set="subtotal_sin_descuento" t-value="0"/>
+
+        <t t-foreach="lines_to_report" t-as="line">
+
+            <t t-if="not line.display_type and not line.is_downpayment">
+
+                <tr>
+
+                    <td class="td-cant" name="td_quantity">
+
+                        <span t-field="line.product_uom_qty"/>
+
+                    </td>
+
+                    <td class="td-desc" name="td_name">
+
+                        <span t-field="line.name"/>
+
+                    </td>
+
+                    <td class="td-unit" name="td_priceunit">
+
+                        <span t-field="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
+
+                    </td>
+
+                    <td t-if="display_discount" class="text-end" style="display: none;">
+
+                        <span t-field="line.discount"/>
+
+                    </td>
+
+                    <t t-set="taxes" t-value="', '.join([(tax.description or tax.name) for tax in line.tax_id])"/>
+
+                    <td name="td_taxes" class="text-end" style="display: none;">
+
+                        <span t-out="taxes">Tax 15%</span>
+
+                    </td>
+
+                    <td class="td-total" name="td_subtotal">
+
+                        <span t-field="line.price_total" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
+
+                    </td>
+
+                </tr>
+
+                <t t-if="line.discount > 0">
+
+                    <t t-set="descuento_linea" t-value="line.price_subtotal * (line.discount / 100.0)"/>
+
+                    <t t-set="total_descuento" t-value="total_descuento + descuento_linea"/>
+
+                </t>
+
+                <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + line.price_subtotal"/>
+
+            </t>
+
+
+
+            <t t-elif="line.display_type == 'line_note'">
+
+                <tr>
+
+                    <td name="td_note_line" colspan="4">
+
+                        <span t-field="line.name"/>
+
+                    </td>
+
+                </tr>
+
+            </t>
+
+        </t>
+
+                            </tbody>
+
+                            <tbody class="descuento-body">
+
+        <t t-if="display_discount and total_descuento > 0">
+
+            <t t-set="porcentaje_descuento" t-value="round((total_descuento / subtotal_sin_descuento) * 100, 0) if subtotal_sin_descuento > 0 else 0"/>
+
+            <tr class="descuento-row">
+
+                <td class="td-cant"/>
+
+                <td class="td-desc descuento-text">
+
+                    DESCUENTO DEL <t t-out="int(porcentaje_descuento)"/>
+
+                    <span class="dotted-line"/>
+
+                </td>
+
+                <td class="td-unit"/>
+
+                <td class="td-total">
+
+                    $ <span t-out="'%.2f' % total_descuento"/>
+
+                </td>
+
+            </tr>
+
+        </t>
+
+        <t t-if="not display_discount or total_descuento == 0">
+
+            <tr class="descuento-row">
+
+                <td class="td-cant"/>
+
+                <td class="td-desc descuento-text">
+
+                    DESCUENTO DEL 10%
+
+                    <span class="dotted-line"/>
+
+                </td>
+
+                <td class="td-unit"/>
+
+                <td class="td-total">
+
+                    $ 0.00
+
+                </td>
+
+            </tr>
+
+        </t>
+
+                            </tbody>
+
+
+
+                        </table>
+
+
+
+                        <t t-set="amount_untaxed" t-value="sum(line.price_subtotal for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
+
+                        <t t-set="amount_descuento" t-value="total_descuento"/>
+
+                        <t t-set="subtotal_con_descuento" t-value="amount_untaxed - amount_descuento"/>
+
+                        <t t-set="amount_total" t-value="sum(line.price_total for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
+
+                        <t t-set="amount_tax" t-value="amount_total - amount_untaxed"/>
+
+                        <t t-set="iva_base" t-value="subtotal_con_descuento"/>
+
+                        <t t-set="iva_amount" t-value="round(iva_base * (amount_tax / amount_untaxed if amount_untaxed > 0 else 0.13), 2) if amount_untaxed > 0 else round(iva_base * 0.13, 2)"/>
+
+                        <t t-set="subtotal_con_iva" t-value="subtotal_con_descuento + iva_amount"/>
+
+                        <t t-set="retencion_iva" t-value="round(subtotal_con_iva * 0.01, 2)"/>
+
+                        <t t-set="total_final" t-value="subtotal_con_iva - retencion_iva"/>
+
+
+
+                        <div class="clearfix" name="so_total_summary">
+
+                            <div id="total" class="row" name="total">
+
+                                <div style="width: 100%;">
+
+                                    <table class="summary-table">
+
+                                        <tr>
+
+                                            <td class="summary-label">Suma</td>
+
+                                            <td>
+
+                                                $ <span t-out="'%.2f' % subtotal_con_descuento"/>
+
+                                            </td>
+
+                                        </tr>
+
+                                        <tr>
+
+                                            <td class="summary-label">IVA</td>
+
+                                            <td>
+
+                                                $ <span t-out="'%.2f' % iva_amount"/>
+
+                                            </td>
+
+                                        </tr>
+
+                                        <tr>
+
+                                            <td class="summary-label">Sub - total</td>
+
+                                            <td>
+
+                                                $ <span t-out="'%.2f' % subtotal_con_iva"/>
+
+                                            </td>
+
+                                        </tr>
+
+                                        <tr>
+
+                                            <td class="summary-label">Retención IVA 1%</td>
+
+                                            <td>
+
+                                                $ <span t-out="'%.2f' % retencion_iva"/>
+
+                                            </td>
+
+                                        </tr>
+
+                                        <tr>
+
+                                            <td class="summary-label total-final">TOTAL</td>
+
+                                            <td class="total-final">
+
+                                                $ <span t-out="'%.2f' % total_final"/>
+
+                                            </td>
+
+                                        </tr>
+
+                                    </table>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        </div>
+
+                        <div class="page-footer">
+
+                        <div class="consideraciones" name="order_note" style="margin-top:10px; border: none;">
+                            <ul style="list-style-type: disc; padding-left: 20px; margin: 0;">
+                                <li><strong>Precio:</strong> Con IVA incluido.</li>
+                                <li><strong>Condición de pago:</strong> Anticipo del 60% al aceptar la oferta y el resto contra entrega</li>
+                                <li><strong>Tiempo de entrega:</strong> 15 dias.</li>
+                            </ul>
+                        </div>
+
+
+
+                        <div class="signatures-section" name="signature">
+
+                            <div class="signature-left">
+
+                                <div class="signature-line">
+
+                                    <div class="signature-name" t-field="doc.partner_id.name"/>
+
+                                </div>
+
+                            </div>
+
+                            <div class="signature-right">
+
+                                <div class="signature-line">
+
+                                    <div class="signature-name" t-field="doc.user_id.name"/>
+
+                                    <div class="signature-title">Asesor Técnico</div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="footer-services">
+
+                            <div>DISEÑO Y FABRICACION DE PROCESOS ELECTOMECANICOS PARA PRODUCCION</div>
+
+                            <div>AUTOMATIZACION, CONTROL INDUSTRIAL E INSTALACIONES ELECTRICAS</div>
+
+                            <div>DISEÑO Y REPARACION DE CIRCUITOS ELECTRONICOS INDUSTRIALES</div>
+
+                            <div>FABRICACION Y REPARACION DE TODO ELEMENTO METALMECANICO</div>
+
+                        </div>
+
+                        </div>
+
+                    </div>
+
+                </t>
+
+            </t>
+        </xpath>
+    </template>
+
+<!--    <template id="report_mario" inherit_id="web.external_layout_standard">-->
+<!--        <xpath expr="//div[@t-att-style='report_header_style']" position="replace">-->
+<!--            <div>-->
+
+<!--            </div>-->
+<!--        </xpath>-->
+
+<!--    </template>-->
+
+    <record id="sale.action_report_saleorder" model="ir.actions.report">
+        <field name="paperformat_id" ref="mrg_sale_custom_template.paperformat_mario"/>
+    </record>
+</odoo>
