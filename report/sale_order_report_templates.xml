@@ -144,6 +144,35 @@
                             margin-bottom: 16px;
                         }
 
+                        .date-order-row {
+                            display: flex;
+                            justify-content: flex-start;
+                            align-items: center;
+                            width: 100%;
+                            gap: 12px;
+                            flex-wrap: nowrap;
+                        }
+
+                        .date-text {
+                            flex: 0 0 auto;
+                        }
+
+                        .date-text span {
+                            font-size: 12px;
+                        }
+
+                        .order-text {
+                            flex: 1 1 auto;
+                            text-align: right;
+                            margin-left: auto;
+                            white-space: nowrap;
+                        }
+
+                        .order-text span {
+                            font-size: 24px;
+                            font-weight: bold;
+                        }
+
                         .client-name {
                             font-size: 16px;
                             font-weight: bold;
@@ -528,10 +557,16 @@
 
 
                         <div class="client-info">
-                            <t t-if="doc.create_date">
-                                <span t-esc="doc.create_date.strftime('%d/%m/%Y')"/>
-                            </t>
-                            <br/>
+                            <div class="date-order-row">
+                                <div class="date-text">
+                                    <t t-if="doc.create_date">
+                                        <span t-esc="doc.create_date.strftime('%d/%m/%Y')"/>
+                                    </t>
+                                </div>
+                                <div class="order-text" t-if="doc.name">
+                                    <span><strong>Cotización:</strong> <t t-esc="doc.name"/></span>
+                                </div>
+                            </div>
                             <br/>
                             <div class="client-name" t-field="doc.partner_id.name"/>
                             <div class="client-contact" t-if="doc.partner_id.comment">
