@@ -34,7 +34,8 @@
                             background: #fff;
                             position: relative;
                             page-break-after: always;
-                            display: block;
+                            display: flex;
+                            flex-direction: column;
                             overflow: visible;
                         }
 
@@ -52,13 +53,17 @@
                         .page-content {
                             position: relative;
                             z-index: 1;
+                            flex: 1 0 auto;
+                            display: flex;
+                            flex-direction: column;
                         }
 
                         .page-footer {
                             width: 100%;
-                            margin: 30px 0 0 0;
-                            padding-bottom: 0;
+                            margin: 0;
+                            padding: 40px 0 0 0;
                             page-break-inside: avoid;
+                            margin-top: auto;
                         }
 
                         .page-footer .consideraciones {
