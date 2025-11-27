@@ -341,8 +341,9 @@
 
                         .signature-line {
                             border-top: 1px solid #000;
-                            margin-top: 100px;
+                            margin: 100px auto 0 auto;
                             padding-top: 3px;
+                            width: 50%;
                         }
 
                         .signature-name {
