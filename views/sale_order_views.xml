@@ -7,10 +7,14 @@
         <field name="arch" type="xml">
             <xpath expr="//page[@name='other_information']" position="after">
                 <page string="Personalización" name="personalizacion">
-                    <group col="12" class="mt-2 mt-md-0">
-                        <group colspan="6">
-                            <field name="mr_personalised_message" colspan="6" nolabel="1" placeholder="Mensaje personalizado para la cotización..."/>
-                        </group>
+                    <group col="12">
+                        <field name="mr_personalised_message" colspan="12" nolabel="1"/>
+                        <div colspan="12" class="alert alert-info" role="alert" style="margin-top: 8px; padding: 10px 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; width: 100%; box-sizing: border-box;">
+                            <i class="fa fa-lightbulb-o" style="margin-right: 8px; color: #0c5460;"></i>
+                            <span style="color: #0c5460; font-size: 13px;">
+                                <strong>Consejo:</strong> Este mensaje aparecerá en el PDF de la cotización, justo después de la información del cliente y antes de la tabla de productos. Puedes personalizarlo según las necesidades de cada cotización, pero recuerde que "Mientras más caracteres contenga este campo el cuerpo de la cotización irá descendiendo".
+                            </span>
+                        </div>
                     </group>
                 </page>
             </xpath>
