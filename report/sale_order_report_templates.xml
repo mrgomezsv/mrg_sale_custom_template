@@ -27,9 +27,10 @@
 
                         .page {
                             border: 2px solid #000000;
-                            padding: 10px 10px;
+                            padding: 10px 10px 0px 10px;
                             margin: 0 12px 0 12px;
-                            min-height: 1020px;
+                            min-height: 1055px;
+                            height: 1055px;
                             box-sizing: border-box;
                             background: #fff;
                             position: relative;
@@ -53,32 +54,39 @@
                         .page-content {
                             position: relative;
                             z-index: 1;
-                            flex: 1 0 auto;
+                            flex: 0 1 auto;
                             display: flex;
                             flex-direction: column;
+                            min-height: 0;
+                            padding-bottom: 340px;
                         }
 
                         .page-footer {
-                            width: 100%;
+                            width: calc(100% - 20px);
                             margin: 0;
-                            padding: 40px 0 0 0;
+                            padding: 0;
                             page-break-inside: avoid;
-                            margin-top: auto;
+                            position: absolute;
+                            bottom: 10px;
+                            left: 10px;
+                            right: 10px;
+                            flex-shrink: 0;
                         }
 
                         .page-footer .consideraciones {
-                            margin-top: 30px;
-                            margin-bottom: 20px;
+                            margin-top: 0px;
+                            margin-bottom: 15px;
                         }
 
                         .page-footer .signatures-section {
-                            margin-top: 60px;
-                            margin-bottom: 20px;
+                            margin-top: 15px;
+                            margin-bottom: 15px;
                         }
 
                         .page-footer .footer-services {
                             margin-top: 0;
                             margin-bottom: 0;
+                            padding-bottom: 0;
                         }
 
                         /* ============================================
@@ -374,7 +382,7 @@
 
                         .signature-line {
                             border-top: 1px solid #000;
-                            margin: 100px auto 0 auto;
+                            margin: 50px auto 0 auto;
                             padding-top: 3px;
                             width: 50%;
                         }
@@ -899,7 +907,7 @@
 
                         <div class="page-footer">
 
-                        <div class="consideraciones" name="order_note" style="margin-top:10px; border: none;">
+                        <div class="consideraciones" name="order_note" style="margin-top:0px; border: none;">
                             <ul style="list-style-type: disc; padding-left: 20px; margin: 0;">
                                 <li><strong>Precio:</strong> Con IVA incluido.</li>
                                 <li><strong>Condición de pago:</strong> Anticipo del 60% al aceptar la oferta y el resto contra entrega</li>
@@ -939,9 +947,9 @@
 
                         <div class="footer-services">
 
-                            <div style="margin-bottom: 3em;"></div>
+                            <div style="margin-bottom: 1em;"></div>
 
-                            <div style="border-top: 2px solid #000; margin-bottom: 1em;"></div>
+                            <div style="border-top: 2px solid #000; margin-bottom: 0.3em;"></div>
 
                             <div>DISEÑO Y FABRICACION DE PROCESOS ELECTOMECANICOS PARA PRODUCCION</div>
 
@@ -949,7 +957,7 @@
 
                             <div>DISEÑO Y REPARACION DE CIRCUITOS ELECTRONICOS INDUSTRIALES</div>
 
-                            <div>FABRICACION Y REPARACION DE TODO ELEMENTO METALMECANICO</div>
+                            <div style="margin-bottom: 0;">FABRICACION Y REPARACION DE TODO ELEMENTO METALMECANICO</div>
 
                         </div>
 
