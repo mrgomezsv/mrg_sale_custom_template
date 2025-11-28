@@ -240,12 +240,12 @@
                         }
 
                         .th-unit {
-                            width: 19%;
+                            width: 10%;
                             text-align: center;
                         }
 
                         .th-total {
-                            width: 19%;
+                            width: 10%;
                             text-align: center;
                         }
 
@@ -572,8 +572,8 @@
                             <div class="client-contact" t-if="doc.partner_id.comment">
                                 <strong><span t-field="doc.partner_id.comment"/></strong>
                             </div>
-                            <div class="intro-text" t-if="doc.mr_personalised_message">
-                                <t t-raw="doc.mr_personalised_message"/>
+                            <div class="intro-text">
+                                Mediante la presente le envío la cotización que me solicitó para la fabricación del siguiente equipo:
                             </div>
                         </div>
 
@@ -938,6 +938,8 @@
 
 
                         <div class="footer-services">
+
+                            <div style="margin-bottom: 3em;"></div>
 
                             <div style="border-top: 2px solid #000; margin-bottom: 1em;"></div>
 

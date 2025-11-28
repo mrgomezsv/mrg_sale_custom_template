@@ -11,7 +11,6 @@
     ],
     "data": [
         "data/paper_format.xml",
-        "views/sale_order_views.xml",
         "report/sale_order_report_templates.xml",
     ],
     "installable": True,
