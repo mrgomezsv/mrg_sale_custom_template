@@ -14,8 +14,6 @@
 
                     <t t-set="display_discount" t-value="any(l.discount for l in lines_to_report)"/>
 
-
-
                     <style>
                         /* ============================================
                            PAGE LAYOUT
@@ -234,6 +232,16 @@
                         .productos-table .descuento-body tr td {
                             border-top: none !important;
                             border-bottom: 2px solid #000 !important;
+                        }
+
+                        /* Section Row Styling */
+                        .productos-table .section-row td {
+                            background-color: #f5f5f5;
+                            font-weight: bold;
+                            font-size: 13px;
+                            padding: 10px 8px;
+                            border: 1px solid #000;
+                            border-top: 2px solid #000;
                         }
 
                         /* Table Column Widths */
@@ -482,503 +490,284 @@
                         }
                     </style>
 
-
-
                     <div class="page">
-
                         <div class="page-content">
+                            <div class="cotizacion-header">
+                                <div class="logo-section">
+                                    <div style="display: flex; align-items: flex-start;">
+                                        <div t-if="doc.company_id.logo" style="margin-right: 10px;">
+                                            <img t-att-src="image_data_uri(doc.company_id.logo)" style="max-height: 80px; max-width: 200px;"/>
+                                        </div>
+                                    </div>
+                                </div>
 
-                        <div class="cotizacion-header">
+                                <div class="company-info">
+                                    <div class="company-name" t-field="doc.company_id.name"/>
 
-                            <div class="logo-section">
-                                <div style="display: flex; align-items: flex-start;">
-                                    <div t-if="doc.company_id.logo" style="margin-right: 10px;">
-                                        <img t-att-src="image_data_uri(doc.company_id.logo)" style="max-height: 80px; max-width: 200px;"/>
+                                    <div class="company-details">
+                                        <!-- Dirección -->
+                                        <strong style="white-space: normal; display:inline-block;">
+                                            <span style="display:inline;" t-field="doc.company_id.street"/>
+                                            <t t-if="doc.company_id.street2">, <span style="display:inline;" t-field="doc.company_id.street2"/></t>
+                                            <t t-if="doc.company_id.city">, <span style="display:inline;" t-field="doc.company_id.city"/></t>
+                                            <t t-if="doc.company_id.state_id">, <span style="display:inline;" t-field="doc.company_id.state_id.name"/></t>
+                                            <t t-if="doc.company_id.country_id">, <span style="display:inline;" t-esc="doc.company_id.country_id.name"/></t>
+                                        </strong>
+                                        <br/>
+                                        <span style="white-space: normal; display:inline-block;">
+                                            <t t-if="doc.company_id.phone">
+                                                <strong>Tel: </strong><span style="display:inline;" t-field="doc.company_id.phone"/>
+                                            </t>
+                                            <t t-if="doc.company_id.mobile">
+                                                <t t-if="doc.company_id.phone"> / </t>
+                                                <span style="display:inline;" t-field="doc.company_id.mobile"/>
+                                            </t>
+                                            <t t-if="doc.company_id.email">
+                                                <t t-if="doc.company_id.phone or doc.company_id.mobile"> — </t>
+                                                <strong>Email: </strong><span style="display:inline;" t-field="doc.company_id.email"/>
+                                            </t>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="header-separator"/>
+                            </div>
+
+                            <div class="client-info">
+                                <div class="date-order-row">
+                                    <div class="date-text">
+                                        <t t-if="doc.create_date">
+                                            <span t-esc="doc.create_date.strftime('%d/%m/%Y')"/>
+                                        </t>
+                                    </div>
+                                    <div class="order-text" t-if="doc.name">
+                                        <span><strong>Cotización:</strong> <t t-esc="doc.name"/></span>
+                                    </div>
+                                </div>
+                                <br/>
+                                <div class="client-name" t-field="doc.partner_id.name"/>
+                                <div class="client-contact" t-if="doc.partner_id.comment">
+                                    <strong><span t-field="doc.partner_id.comment"/></strong>
+                                </div>
+                                <div class="intro-text">
+                                    Mediante la presente, le envío la cotización que solicitó para lo siguiente:
+                                </div>
+                            </div>
+
+                            <div class="row mt-4 mb-4" id="informations" style="display: none;">
+                                <div t-if="doc.client_order_ref" class="col-auto col-3 mw-100 mb-2" name="informations_reference">
+                                    <strong>Your Reference:</strong>
+                                    <p class="m-0" t-field="doc.client_order_ref"/>
+                                </div>
+
+                                <div t-if="doc.date_order" class="col-auto col-3 mw-100 mb-2" name="informations_date">
+                                    <strong t-if="doc.state in ['draft', 'sent']">Quotation Date:</strong>
+                                    <strong t-else="">Order Date:</strong>
+                                    <p class="m-0" t-field="doc.date_order" t-options="{'widget': 'date'}"/>
+                                </div>
+
+                                <div class="col-auto col-3 mw-100 mb-2" name="expiration_date">
+                                    <t t-if="doc.validity_date and doc.state in ['draft', 'sent']">
+                                        <strong>Expiration:</strong>
+                                        <p class="m-0" t-field="doc.validity_date"/>
+                                    </t>
+                                </div>
+
+                                <div t-if="doc.user_id.name" class="col-auto col-3 mw-100 mb-2">
+                                    <strong>Salesperson:</strong>
+                                    <p class="m-0" t-field="doc.user_id"/>
+                                </div>
+                            </div>
+
+                            <table class="productos-table">
+                                <thead>
+                                    <tr>
+                                        <th class="th-cant" name="th_quantity">Cant.</th>
+                                        <th class="th-desc" name="th_description">Descripción</th>
+                                        <th class="th-unit" name="th_priceunit">Costo Unit</th>
+                                        <th name="th_discount" t-if="display_discount" class="text-end" style="display: none;">
+                                            <span>Disc.%</span>
+                                        </th>
+                                        <th name="th_taxes" class="text-end" style="display: none;">Taxes</th>
+                                        <th class="th-total" name="th_subtotal">Costo Total</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody class="productos-body">
+                                    <t t-set="total_descuento" t-value="0"/>
+                                    <t t-set="subtotal_sin_descuento" t-value="0"/>
+
+                                    <t t-foreach="lines_to_report" t-as="line">
+                                        <t t-if="line.display_type == 'line_section'">
+                                            <tr class="section-row">
+                                                <td name="td_section_line" colspan="4">
+                                                    <span t-field="line.name"/>
+                                                </td>
+                                            </tr>
+                                        </t>
+
+                                        <t t-elif="not line.display_type and not line.is_downpayment">
+                                            <tr>
+                                                <td class="td-cant" name="td_quantity">
+                                                    <span t-field="line.product_uom_qty"/>
+                                                </td>
+                                                <td class="td-desc" name="td_name">
+                                                    <span t-field="line.name"/>
+                                                </td>
+                                                <td class="td-unit" name="td_priceunit">
+                                                    <span t-field="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
+                                                </td>
+                                                <td t-if="display_discount" class="text-end" style="display: none;">
+                                                    <span t-field="line.discount"/>
+                                                </td>
+                                                <t t-set="taxes" t-value="', '.join([(tax.description or tax.name) for tax in line.tax_id])"/>
+                                                <td name="td_taxes" class="text-end" style="display: none;">
+                                                    <span t-out="taxes">Tax 15%</span>
+                                                </td>
+                                                <td class="td-total" name="td_subtotal">
+                                                    <span t-field="line.price_total" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
+                                                </td>
+                                            </tr>
+
+                                            <t t-if="line.discount > 0">
+                                                <t t-set="descuento_linea" t-value="line.price_subtotal * (line.discount / 100.0)"/>
+                                                <t t-set="total_descuento" t-value="total_descuento + descuento_linea"/>
+                                            </t>
+
+                                            <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + line.price_subtotal"/>
+                                        </t>
+
+                                        <t t-elif="line.display_type == 'line_note'">
+                                            <tr>
+                                                <td name="td_note_line" colspan="4">
+                                                    <span t-field="line.name"/>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                </tbody>
+
+                                <tbody class="descuento-body">
+                                    <t t-if="display_discount and total_descuento > 0">
+                                        <t t-set="porcentaje_descuento" t-value="round((total_descuento / subtotal_sin_descuento) * 100, 0) if subtotal_sin_descuento > 0 else 0"/>
+                                        <tr class="descuento-row">
+                                            <td class="td-cant"/>
+                                            <td class="td-desc descuento-text">
+                                                DESCUENTO DEL <t t-out="int(porcentaje_descuento)"/>
+                                                <span class="dotted-line"/>
+                                            </td>
+                                            <td class="td-unit"/>
+                                            <td class="td-total">
+                                                $ <span t-out="'%.2f' % total_descuento"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+
+                                    <t t-if="not display_discount or total_descuento == 0">
+                                        <tr class="descuento-row">
+                                            <td class="td-cant"/>
+                                            <td class="td-desc descuento-text">
+                                                DESCUENTO DEL 10%
+                                                <span class="dotted-line"/>
+                                            </td>
+                                            <td class="td-unit"/>
+                                            <td class="td-total">
+                                                $ 0.00
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+
+                            <t t-set="amount_untaxed" t-value="sum(line.price_subtotal for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
+                            <t t-set="amount_descuento" t-value="total_descuento"/>
+                            <t t-set="subtotal_con_descuento" t-value="amount_untaxed - amount_descuento"/>
+                            <t t-set="amount_total" t-value="sum(line.price_total for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
+                            <t t-set="amount_tax" t-value="amount_total - amount_untaxed"/>
+                            <t t-set="iva_base" t-value="subtotal_con_descuento"/>
+                            <t t-set="iva_amount" t-value="round(iva_base * (amount_tax / amount_untaxed if amount_untaxed > 0 else 0.13), 2) if amount_untaxed > 0 else round(iva_base * 0.13, 2)"/>
+                            <t t-set="subtotal_con_iva" t-value="subtotal_con_descuento + iva_amount"/>
+                            <t t-set="retencion_iva" t-value="round(subtotal_con_iva * 0.01, 2)"/>
+                            <t t-set="total_final" t-value="subtotal_con_iva - retencion_iva"/>
+
+                            <div class="clearfix" name="so_total_summary">
+                                <div id="total" class="row" name="total">
+                                    <div style="width: 100%;">
+                                        <table class="summary-table">
+                                            <tr>
+                                                <td class="summary-label">Suma</td>
+                                                <td>
+                                                    $ <span t-out="'%.2f' % subtotal_con_descuento"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">IVA</td>
+                                                <td>
+                                                    $ <span t-out="'%.2f' % iva_amount"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Sub - total</td>
+                                                <td>
+                                                    $ <span t-out="'%.2f' % subtotal_con_iva"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label">Retención IVA 1%</td>
+                                                <td>
+                                                    $ <span t-out="'%.2f' % retencion_iva"/>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="summary-label total-final">TOTAL</td>
+                                                <td class="total-final">
+                                                    $ <span t-out="'%.2f' % total_final"/>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="page-footer">
+                            <div class="consideraciones" name="order_note" style="margin-top:0px; border: none;">
+                                <ul style="list-style-type: disc; padding-left: 20px; margin: 0;">
+                                    <li><strong>Precio:</strong> Con IVA incluido.</li>
+                                    <li><strong>Condición de pago:</strong> Anticipo del 60% al aceptar la oferta y el resto contra entrega</li>
+                                    <li><strong>Tiempo de entrega:</strong> 15 dias.</li>
+                                </ul>
+                            </div>
+
+                            <div class="signatures-section" name="signature">
+                                <div class="signature-left">
+                                    <div class="signature-line">
+                                        <div class="signature-name" t-field="doc.partner_id.name"/>
+                                    </div>
+                                </div>
+
+                                <div class="signature-right">
+                                    <div class="signature-line">
+                                        <div class="signature-name" t-field="doc.user_id.name"/>
+                                        <div class="signature-title">Asesor Técnico</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="company-info">
-
-                                <div class="company-name" t-field="doc.company_id.name"/>
-
-                                <div class="company-details">
-
-<!-- Dirección -->
-
-<strong style="white-space: normal; display:inline-block;">
-
-  <span style="display:inline;" t-field="doc.company_id.street"/> 
-
-  <t t-if="doc.company_id.street2">, <span style="display:inline;" t-field="doc.company_id.street2"/></t>
-
-  <t t-if="doc.company_id.city">, <span style="display:inline;" t-field="doc.company_id.city"/></t>
-
-  <t t-if="doc.company_id.state_id">, <span style="display:inline;" t-field="doc.company_id.state_id.name"/></t>
-
-  <t t-if="doc.company_id.country_id">, <span style="display:inline;" t-esc="doc.company_id.country_id.name"/></t>
-
-</strong>
-
-<br/>
-
-<!-- Teléfonos y correos -->
-
-<span style="white-space: normal; display:inline-block;">
-
-  <t t-if="doc.company_id.phone">
-
-    <strong>Tel: </strong><span style="display:inline;" t-field="doc.company_id.phone"/>
-
-  </t>
-
-  <t t-if="doc.company_id.mobile">
-
-    <t t-if="doc.company_id.phone"> / </t>
-
-    <span style="display:inline;" t-field="doc.company_id.mobile"/>
-
-  </t>
-
-  <t t-if="doc.company_id.email">
-
-    <t t-if="doc.company_id.phone or doc.company_id.mobile"> — </t>
-
-    <strong>Email: </strong><span style="display:inline;" t-field="doc.company_id.email"/>
-
-  </t>
-
-</span>
-
-
-
-
-
-                                </div>
-
-                            </div>
-
-                            <div class="header-separator"/>
-
-                        </div>
-
-
-
-                        <div class="client-info">
-                            <div class="date-order-row">
-                                <div class="date-text">
-                                    <t t-if="doc.create_date">
-                                        <span t-esc="doc.create_date.strftime('%d/%m/%Y')"/>
-                                    </t>
-                                </div>
-                                <div class="order-text" t-if="doc.name">
-                                    <span><strong>Cotización:</strong> <t t-esc="doc.name"/></span>
-                                </div>
-                            </div>
-                            <br/>
-                            <div class="client-name" t-field="doc.partner_id.name"/>
-                            <div class="client-contact" t-if="doc.partner_id.comment">
-                                <strong><span t-field="doc.partner_id.comment"/></strong>
-                            </div>
-                            <div class="intro-text">
-                                Mediante la presente, le envío la cotización que solicitó para lo siguiente:
+                            <div class="footer-services">
+                                <div style="margin-bottom: 1em;"></div>
+                                <div style="border-top: 2px solid #000; margin-bottom: 0.3em;"></div>
+                                <div>DISEÑO Y FABRICACION DE PROCESOS ELECTOMECANICOS PARA PRODUCCION</div>
+                                <div>AUTOMATIZACION, CONTROL INDUSTRIAL E INSTALACIONES ELECTRICAS</div>
+                                <div>DISEÑO Y REPARACION DE CIRCUITOS ELECTRONICOS INDUSTRIALES</div>
+                                <div style="margin-bottom: 0;">FABRICACION Y REPARACION DE TODO ELEMENTO METALMECANICO</div>
                             </div>
                         </div>
-
-
-
-                        <div class="row mt-4 mb-4" id="informations" style="display: none;">
-
-                            <div t-if="doc.client_order_ref" class="col-auto col-3 mw-100 mb-2" name="informations_reference">
-
-                                <strong>Your Reference:</strong>
-
-                                <p class="m-0" t-field="doc.client_order_ref"/>
-
-                            </div>
-
-                            <div t-if="doc.date_order" class="col-auto col-3 mw-100 mb-2" name="informations_date">
-
-                                <strong t-if="doc.state in ['draft', 'sent']">Quotation Date:</strong>
-
-                                <strong t-else="">Order Date:</strong>
-
-                                <p class="m-0" t-field="doc.date_order" t-options="{'widget': 'date'}"/>
-
-                            </div>
-
-                            <div class="col-auto col-3 mw-100 mb-2" name="expiration_date">
-
-                                <t t-if="doc.validity_date and doc.state in ['draft', 'sent']">
-
-                                    <strong>Expiration:</strong>
-
-                                    <p class="m-0" t-field="doc.validity_date"/>
-
-                                </t>
-
-                            </div>
-
-                            <div t-if="doc.user_id.name" class="col-auto col-3 mw-100 mb-2">
-
-                                <strong>Salesperson:</strong>
-
-                                <p class="m-0" t-field="doc.user_id"/>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <table class="productos-table">
-
-                            <thead>
-
-                                <tr>
-
-                                    <th class="th-cant" name="th_quantity">Cant.</th>
-
-                                    <th class="th-desc" name="th_description">Descripción</th>
-
-                                    <th class="th-unit" name="th_priceunit">Costo Unit</th>
-
-                                    <th name="th_discount" t-if="display_discount" class="text-end" style="display: none;">
-
-                                        <span>Disc.%</span>
-
-                                    </th>
-
-                                    <th name="th_taxes" class="text-end" style="display: none;">Taxes</th>
-
-                                    <th class="th-total" name="th_subtotal">Costo Total</th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody class="productos-body">
-
-        <t t-set="total_descuento" t-value="0"/>
-
-        <t t-set="subtotal_sin_descuento" t-value="0"/>
-
-        <t t-foreach="lines_to_report" t-as="line">
-
-            <t t-if="not line.display_type and not line.is_downpayment">
-
-                <tr>
-
-                    <td class="td-cant" name="td_quantity">
-
-                        <span t-field="line.product_uom_qty"/>
-
-                    </td>
-
-                    <td class="td-desc" name="td_name">
-
-                        <span t-field="line.name"/>
-
-                    </td>
-
-                    <td class="td-unit" name="td_priceunit">
-
-                        <span t-field="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
-
-                    </td>
-
-                    <td t-if="display_discount" class="text-end" style="display: none;">
-
-                        <span t-field="line.discount"/>
-
-                    </td>
-
-                    <t t-set="taxes" t-value="', '.join([(tax.description or tax.name) for tax in line.tax_id])"/>
-
-                    <td name="td_taxes" class="text-end" style="display: none;">
-
-                        <span t-out="taxes">Tax 15%</span>
-
-                    </td>
-
-                    <td class="td-total" name="td_subtotal">
-
-                        <span t-field="line.price_total" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
-
-                    </td>
-
-                </tr>
-
-                <t t-if="line.discount > 0">
-
-                    <t t-set="descuento_linea" t-value="line.price_subtotal * (line.discount / 100.0)"/>
-
-                    <t t-set="total_descuento" t-value="total_descuento + descuento_linea"/>
-
-                </t>
-
-                <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + line.price_subtotal"/>
-
-            </t>
-
-
-
-            <t t-elif="line.display_type == 'line_note'">
-
-                <tr>
-
-                    <td name="td_note_line" colspan="4">
-
-                        <span t-field="line.name"/>
-
-                    </td>
-
-                </tr>
-
-            </t>
-
-        </t>
-
-                            </tbody>
-
-                            <tbody class="descuento-body">
-
-        <t t-if="display_discount and total_descuento > 0">
-
-            <t t-set="porcentaje_descuento" t-value="round((total_descuento / subtotal_sin_descuento) * 100, 0) if subtotal_sin_descuento > 0 else 0"/>
-
-            <tr class="descuento-row">
-
-                <td class="td-cant"/>
-
-                <td class="td-desc descuento-text">
-
-                    DESCUENTO DEL <t t-out="int(porcentaje_descuento)"/>
-
-                    <span class="dotted-line"/>
-
-                </td>
-
-                <td class="td-unit"/>
-
-                <td class="td-total">
-
-                    $ <span t-out="'%.2f' % total_descuento"/>
-
-                </td>
-
-            </tr>
-
-        </t>
-
-        <t t-if="not display_discount or total_descuento == 0">
-
-            <tr class="descuento-row">
-
-                <td class="td-cant"/>
-
-                <td class="td-desc descuento-text">
-
-                    DESCUENTO DEL 10%
-
-                    <span class="dotted-line"/>
-
-                </td>
-
-                <td class="td-unit"/>
-
-                <td class="td-total">
-
-                    $ 0.00
-
-                </td>
-
-            </tr>
-
-        </t>
-
-                            </tbody>
-
-
-
-                        </table>
-
-
-
-                        <t t-set="amount_untaxed" t-value="sum(line.price_subtotal for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
-
-                        <t t-set="amount_descuento" t-value="total_descuento"/>
-
-                        <t t-set="subtotal_con_descuento" t-value="amount_untaxed - amount_descuento"/>
-
-                        <t t-set="amount_total" t-value="sum(line.price_total for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
-
-                        <t t-set="amount_tax" t-value="amount_total - amount_untaxed"/>
-
-                        <t t-set="iva_base" t-value="subtotal_con_descuento"/>
-
-                        <t t-set="iva_amount" t-value="round(iva_base * (amount_tax / amount_untaxed if amount_untaxed > 0 else 0.13), 2) if amount_untaxed > 0 else round(iva_base * 0.13, 2)"/>
-
-                        <t t-set="subtotal_con_iva" t-value="subtotal_con_descuento + iva_amount"/>
-
-                        <t t-set="retencion_iva" t-value="round(subtotal_con_iva * 0.01, 2)"/>
-
-                        <t t-set="total_final" t-value="subtotal_con_iva - retencion_iva"/>
-
-
-
-                        <div class="clearfix" name="so_total_summary">
-
-                            <div id="total" class="row" name="total">
-
-                                <div style="width: 100%;">
-
-                                    <table class="summary-table">
-
-                                        <tr>
-
-                                            <td class="summary-label">Suma</td>
-
-                                            <td>
-
-                                                $ <span t-out="'%.2f' % subtotal_con_descuento"/>
-
-                                            </td>
-
-                                        </tr>
-
-                                        <tr>
-
-                                            <td class="summary-label">IVA</td>
-
-                                            <td>
-
-                                                $ <span t-out="'%.2f' % iva_amount"/>
-
-                                            </td>
-
-                                        </tr>
-
-                                        <tr>
-
-                                            <td class="summary-label">Sub - total</td>
-
-                                            <td>
-
-                                                $ <span t-out="'%.2f' % subtotal_con_iva"/>
-
-                                            </td>
-
-                                        </tr>
-
-                                        <tr>
-
-                                            <td class="summary-label">Retención IVA 1%</td>
-
-                                            <td>
-
-                                                $ <span t-out="'%.2f' % retencion_iva"/>
-
-                                            </td>
-
-                                        </tr>
-
-                                        <tr>
-
-                                            <td class="summary-label total-final">TOTAL</td>
-
-                                            <td class="total-final">
-
-                                                $ <span t-out="'%.2f' % total_final"/>
-
-                                            </td>
-
-                                        </tr>
-
-                                    </table>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        </div>
-
-                        <div class="page-footer">
-
-                        <div class="consideraciones" name="order_note" style="margin-top:0px; border: none;">
-                            <ul style="list-style-type: disc; padding-left: 20px; margin: 0;">
-                                <li><strong>Precio:</strong> Con IVA incluido.</li>
-                                <li><strong>Condición de pago:</strong> Anticipo del 60% al aceptar la oferta y el resto contra entrega</li>
-                                <li><strong>Tiempo de entrega:</strong> 15 dias.</li>
-                            </ul>
-                        </div>
-
-
-
-                        <div class="signatures-section" name="signature">
-
-                            <div class="signature-left">
-
-                                <div class="signature-line">
-
-                                    <div class="signature-name" t-field="doc.partner_id.name"/>
-
-                                </div>
-
-                            </div>
-
-                            <div class="signature-right">
-
-                                <div class="signature-line">
-
-                                    <div class="signature-name" t-field="doc.user_id.name"/>
-
-                                    <div class="signature-title">Asesor Técnico</div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <div class="footer-services">
-
-                            <div style="margin-bottom: 1em;"></div>
-
-                            <div style="border-top: 2px solid #000; margin-bottom: 0.3em;"></div>
-
-                            <div>DISEÑO Y FABRICACION DE PROCESOS ELECTOMECANICOS PARA PRODUCCION</div>
-
-                            <div>AUTOMATIZACION, CONTROL INDUSTRIAL E INSTALACIONES ELECTRICAS</div>
-
-                            <div>DISEÑO Y REPARACION DE CIRCUITOS ELECTRONICOS INDUSTRIALES</div>
-
-                            <div style="margin-bottom: 0;">FABRICACION Y REPARACION DE TODO ELEMENTO METALMECANICO</div>
-
-                        </div>
-
-                        </div>
-
                     </div>
-
                 </t>
-
             </t>
         </xpath>
     </template>
-
-<!--    <template id="report_mario" inherit_id="web.external_layout_standard">-->
-<!--        <xpath expr="//div[@t-att-style='report_header_style']" position="replace">-->
-<!--            <div>-->
-
-<!--            </div>-->
-<!--        </xpath>-->
-
-<!--    </template>-->
 
     <record id="sale.action_report_saleorder" model="ir.actions.report">
         <field name="paperformat_id" ref="mrg_sale_custom_template.paperformat_mario"/>
