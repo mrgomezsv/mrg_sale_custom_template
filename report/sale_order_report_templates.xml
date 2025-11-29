@@ -581,7 +581,7 @@
                                 <strong><span t-field="doc.partner_id.comment"/></strong>
                             </div>
                             <div class="intro-text">
-                                Mediante la presente le envío la cotización que me solicitó para la fabricación del siguiente equipo:
+                                Mediante la presente, le envío la cotización que solicitó para lo siguiente:
                             </div>
                         </div>
 
