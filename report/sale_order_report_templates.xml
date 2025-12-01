@@ -712,33 +712,33 @@
                                             <tr>
                                                 <td class="summary-label">Suma</td>
                                                 <td>
-                                                    $ <span t-out="'%.2f' % subtotal_con_descuento"/>
+                                                    $ <span t-esc="doc.format_currency(subtotal_con_descuento)"/>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td class="summary-label">IVA</td>
                                                 <td>
-                                                    $ <span t-out="'%.2f' % iva_amount"/>
+                                                    $ <span t-esc="doc.format_currency(iva_amount)"/>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td class="summary-label">Sub - total</td>
                                                 <td>
-                                                    $ <span t-out="'%.2f' % subtotal_con_iva"/>
+                                                    $ <span t-esc="doc.format_currency(subtotal_con_iva)"/>
                                                 </td>
                                             </tr>
                                             <t t-if="retencion_iva">
                                                 <tr>
                                                     <td class="summary-label">Retención IVA 1%</td>
                                                     <td>
-                                                        $ <span t-out="'%.2f' % retencion_iva"/>
+                                                        $ <span t-esc="doc.format_currency(retencion_iva)"/>
                                                     </td>
                                                 </tr>
                                             </t>
                                             <tr>
                                                 <td class="summary-label total-final">TOTAL</td>
                                                 <td class="total-final">
-                                                    $ <span t-out="'%.2f' % total_final"/>
+                                                    $ <span t-esc="doc.format_currency(total_final)"/>
                                                 </td>
                                             </tr>
                                         </table>

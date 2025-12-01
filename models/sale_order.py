@@ -19,3 +19,9 @@ class SaleOrder(models.Model):
         delta = self.commitment_date - self.date_order
         return delta.days
 
+    def format_currency(self, amount):
+        """Formatea un monto con separadores de miles (formato: 1,234.56)"""
+        if amount is None:
+            return '0.00'
+        return '{:,.2f}'.format(float(amount))
+
