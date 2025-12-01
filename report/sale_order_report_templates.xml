@@ -700,7 +700,9 @@
                             <t t-set="iva_base" t-value="subtotal_con_descuento"/>
                             <t t-set="iva_amount" t-value="round(iva_base * (amount_tax / amount_untaxed if amount_untaxed > 0 else 0.13), 2) if amount_untaxed > 0 else round(iva_base * 0.13, 2)"/>
                             <t t-set="subtotal_con_iva" t-value="subtotal_con_descuento + iva_amount"/>
-                            <t t-set="retencion_iva" t-value="round(subtotal_con_iva * 0.01, 2)"/>
+                            <!-- Aplicar retención IVA 1% solo si el impuesto está presente en alguna línea -->
+                            <t t-set="apply_retencion_iva" t-value="any('Retención IVA 1%' in (tax.name or '') for line in doc.order_line for tax in line.tax_id)"/>
+                            <t t-set="retencion_iva" t-value="round(subtotal_con_iva * 0.01, 2) if apply_retencion_iva else 0.0"/>
                             <t t-set="total_final" t-value="subtotal_con_iva - retencion_iva"/>
 
                             <div class="clearfix" name="so_total_summary">
@@ -725,12 +727,14 @@
                                                     $ <span t-out="'%.2f' % subtotal_con_iva"/>
                                                 </td>
                                             </tr>
-                                            <tr>
-                                                <td class="summary-label">Retención IVA 1%</td>
-                                                <td>
-                                                    $ <span t-out="'%.2f' % retencion_iva"/>
-                                                </td>
-                                            </tr>
+                                            <t t-if="retencion_iva">
+                                                <tr>
+                                                    <td class="summary-label">Retención IVA 1%</td>
+                                                    <td>
+                                                        $ <span t-out="'%.2f' % retencion_iva"/>
+                                                    </td>
+                                                </tr>
+                                            </t>
                                             <tr>
                                                 <td class="summary-label total-final">TOTAL</td>
                                                 <td class="total-final">
