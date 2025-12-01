@@ -753,7 +753,12 @@
                                     <li t-if="not doc.note">
                                         <strong>Condición de pago:</strong>
                                     </li>
-                                    <li><strong>Tiempo de entrega:</strong> 15 dias.</li>
+                                    <li t-if="doc.get_delivery_days() is not None">
+                                        <strong>Tiempo de entrega:</strong> <t t-esc="doc.get_delivery_days()"/> días
+                                    </li>
+                                    <li t-if="doc.get_delivery_days() is None">
+                                        <strong>Tiempo de entrega:</strong> 15 dias.
+                                    </li>
                                 </ul>
                             </div>
 
