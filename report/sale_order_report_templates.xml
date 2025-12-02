@@ -32,10 +32,14 @@
                             box-sizing: border-box;
                             background: #fff;
                             position: relative;
-                            page-break-after: always;
+                            page-break-after: auto;
                             display: flex;
                             flex-direction: column;
                             overflow: visible;
+                        }
+
+                        .page:last-child {
+                            page-break-after: avoid;
                         }
 
                         @page {
