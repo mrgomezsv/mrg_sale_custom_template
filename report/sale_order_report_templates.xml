@@ -208,7 +208,7 @@
                         .productos-table th,
                         .productos-table td {
                             padding: 8px;
-                            font-size: 12px;
+                            font-size: 15px;
                         }
 
                         .productos-table th {
@@ -238,7 +238,7 @@
                         .productos-table .section-row td {
                             background-color: #f5f5f5;
                             font-weight: bold;
-                            font-size: 13px;
+                            font-size: 15px;
                             padding: 10px 8px;
                             border: 1px solid #000;
                             border-top: 2px solid #000;
@@ -313,7 +313,7 @@
                         .summary-table td {
                             border: 1px solid #000;
                             padding: 4px 8px;
-                            font-size: 12px;
+                            font-size: 15px;
                             text-align: right;
                             line-height: 1.2;
                         }
@@ -519,7 +519,7 @@
 
                                     <div class="company-details">
                                         <!-- Dirección -->
-                                        <strong style="white-space: normal; display:inline-block;">
+                                        <strong style="white-space: normal; display:inline-block; font-size: 15px;">
                                             <span style="display:inline;" t-field="doc.company_id.street"/>
                                             <t t-if="doc.company_id.street2">, <span style="display:inline;" t-field="doc.company_id.street2"/></t>
                                             <t t-if="doc.company_id.city">, <span style="display:inline;" t-field="doc.company_id.city"/></t>
@@ -527,7 +527,7 @@
                                             <t t-if="doc.company_id.country_id">, <span style="display:inline;" t-esc="doc.company_id.country_id.name"/></t>
                                         </strong>
                                         <br/>
-                                        <span style="white-space: normal; display:inline-block;">
+                                        <span style="white-space: normal; display:inline-block; font-size: 15px;">
                                             <t t-if="doc.company_id.phone">
                                                 <strong>Tel: </strong><span style="display:inline;" t-field="doc.company_id.phone"/>
                                             </t>
@@ -548,7 +548,7 @@
 
                             <div class="client-info">
                                 <div class="date-order-row">
-                                    <div class="date-text">
+                                    <div class="date-text; font-size: 15px;">
                                         <t t-if="doc.create_date">
                                             <span t-esc="doc.create_date.strftime('%d/%m/%Y')"/>
                                         </t>
@@ -562,7 +562,7 @@
                                 <div class="client-contact" t-if="doc.partner_id.comment">
                                     <strong><span t-field="doc.partner_id.comment"/></strong>
                                 </div>
-                                <div class="intro-text">
+                                <div class="intro-text; font-size: 15px;">
                                     Mediante la presente, le envío la cotización que solicitó para lo siguiente:
                                 </div>
                             </div>
@@ -638,16 +638,21 @@
                                                     <span t-out="taxes">Tax 15%</span>
                                                 </td>
                                                 <td class="td-total" name="td_subtotal">
-                                                    <span t-field="line.price_total" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
+                                                    <span t-esc="doc.format_currency(line.price_unit * line.product_uom_qty)"/>
                                                 </td>
                                             </tr>
 
                                             <t t-if="line.discount > 0">
-                                                <t t-set="descuento_linea" t-value="line.price_subtotal * (line.discount / 100.0)"/>
+                                                <!-- Base sin descuento, reconstruida a partir del subtotal de la línea -->
+                                                <t t-set="base_sin_desc" t-value="(line.price_subtotal / (1 - (line.discount / 100.0))) if line.discount &lt; 100 else 0.0"/>
+                                                <t t-set="descuento_linea" t-value="base_sin_desc - line.price_subtotal"/>
                                                 <t t-set="total_descuento" t-value="total_descuento + descuento_linea"/>
+                                                <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + base_sin_desc"/>
                                             </t>
 
-                                            <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + line.price_subtotal"/>
+                                            <t t-if="line.discount == 0">
+                                                <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + line.price_subtotal"/>
+                                            </t>
                                         </t>
 
                                         <t t-elif="line.display_type == 'line_note'">
@@ -692,18 +697,21 @@
                                 </tbody>
                             </table>
 
+                            <!-- amount_untaxed ya incluye el descuento de las líneas -->
                             <t t-set="amount_untaxed" t-value="sum(line.price_subtotal for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
                             <t t-set="amount_descuento" t-value="total_descuento"/>
-                            <t t-set="subtotal_con_descuento" t-value="amount_untaxed - amount_descuento"/>
-                            <t t-set="amount_total" t-value="sum(line.price_total for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
-                            <t t-set="amount_tax" t-value="amount_total - amount_untaxed"/>
-                            <t t-set="iva_base" t-value="subtotal_con_descuento"/>
-                            <t t-set="iva_amount" t-value="round(iva_base * (amount_tax / amount_untaxed if amount_untaxed > 0 else 0.13), 2) if amount_untaxed > 0 else round(iva_base * 0.13, 2)"/>
-                            <t t-set="subtotal_con_iva" t-value="subtotal_con_descuento + iva_amount"/>
-                            <!-- Aplicar retención IVA 1% solo si el impuesto está presente en alguna línea -->
-                            <t t-set="apply_retencion_iva" t-value="any('Retención IVA 1%' in (tax.name or '') for line in doc.order_line for tax in line.tax_id)"/>
-                            <t t-set="retencion_iva" t-value="round(subtotal_con_iva * 0.01, 2) if apply_retencion_iva else 0.0"/>
-                            <t t-set="total_final" t-value="subtotal_con_iva - retencion_iva"/>
+                            <!-- La 'Suma' mostrada corresponde al total después del descuento -->
+                            <t t-set="subtotal_con_descuento" t-value="amount_untaxed"/>
+                            <!-- Obtener todos los impuestos ordenados dinámicamente usando valores calculados por Odoo -->
+                            <t t-set="all_taxes" t-value="doc.get_all_taxes_ordered(subtotal_con_descuento, 0)"/>
+                            <!-- Separar impuestos normales (IVA y otros) de retenciones -->
+                            <t t-set="impuestos_normales" t-value="[tax for tax in all_taxes if tax['order'] != 2]"/>
+                            <t t-set="retenciones" t-value="[tax for tax in all_taxes if tax['order'] == 2]"/>
+                            <!-- Calcular totales -->
+                            <t t-set="total_impuestos_sin_retencion" t-value="sum(tax['amount'] for tax in impuestos_normales)"/>
+                            <t t-set="subtotal_con_impuestos" t-value="subtotal_con_descuento + total_impuestos_sin_retencion"/>
+                            <t t-set="total_retenciones" t-value="sum(ret['amount'] for ret in retenciones)"/>
+                            <t t-set="total_final" t-value="subtotal_con_impuestos - total_retenciones"/>
 
                             <div class="clearfix" name="so_total_summary">
                                 <div id="total" class="row" name="total">
@@ -715,23 +723,29 @@
                                                     $ <span t-esc="doc.format_currency(subtotal_con_descuento)"/>
                                                 </td>
                                             </tr>
-                                            <tr>
-                                                <td class="summary-label">IVA</td>
-                                                <td>
-                                                    $ <span t-esc="doc.format_currency(iva_amount)"/>
-                                                </td>
-                                            </tr>
+                                            <!-- Mostrar todos los impuestos en orden: IVA primero, luego otros, excluyendo retenciones -->
+                                            <t t-foreach="all_taxes" t-as="tax">
+                                                <t t-if="tax['order'] != 2">
+                                                    <tr>
+                                                        <td class="summary-label" t-esc="tax['name']"/>
+                                                        <td>
+                                                            $ <span t-esc="doc.format_currency(tax['amount'])"/>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </t>
                                             <tr>
                                                 <td class="summary-label">Sub - total</td>
                                                 <td>
-                                                    $ <span t-esc="doc.format_currency(subtotal_con_iva)"/>
+                                                    $ <span t-esc="doc.format_currency(subtotal_con_impuestos)"/>
                                                 </td>
                                             </tr>
-                                            <t t-if="retencion_iva">
+                                            <!-- Mostrar retenciones después del subtotal -->
+                                            <t t-foreach="retenciones" t-as="retencion">
                                                 <tr>
-                                                    <td class="summary-label">Retención IVA 1%</td>
+                                                    <td class="summary-label" t-esc="retencion['name']"/>
                                                     <td>
-                                                        $ <span t-esc="doc.format_currency(retencion_iva)"/>
+                                                        $ <span t-esc="doc.format_currency(retencion['amount'])"/>
                                                     </td>
                                                 </tr>
                                             </t>
@@ -766,17 +780,17 @@
                                 </ul>
                             </div>
 
-                            <div class="signatures-section" name="signature">
+                            <div class="signatures-section" style="font-size: 15px;" name="signature">
                                 <div class="signature-left">
                                     <div class="signature-line">
-                                        <div class="signature-name" t-field="doc.partner_id.name"/>
+                                        <div class="signature-name" style="font-size: 15px;" t-field="doc.partner_id.name"/>
                                     </div>
                                 </div>
 
                                 <div class="signature-right">
                                     <div class="signature-line">
-                                        <div class="signature-name" t-field="doc.user_id.name"/>
-                                        <div class="signature-title">Asesor Técnico</div>
+                                        <div class="signature-name" style="font-size: 15px;" t-field="doc.user_id.name"/>
+                                        <div class="signature-title" style="font-size: 15px;">Asesor Técnico</div>
                                     </div>
                                 </div>
                             </div>
@@ -784,10 +798,10 @@
                             <div class="footer-services">
                                 <div style="margin-bottom: 1em;"></div>
                                 <div style="border-top: 2px solid #000; margin-bottom: 0.3em;"></div>
-                                <div>DISEÑO Y FABRICACION DE PROCESOS ELECTOMECANICOS PARA PRODUCCION</div>
-                                <div>AUTOMATIZACION, CONTROL INDUSTRIAL E INSTALACIONES ELECTRICAS</div>
-                                <div>DISEÑO Y REPARACION DE CIRCUITOS ELECTRONICOS INDUSTRIALES</div>
-                                <div style="margin-bottom: 0;">FABRICACION Y REPARACION DE TODO ELEMENTO METALMECANICO</div>
+                                <div><strong>DISEÑO Y FABRICACION DE PROCESOS ELECTOMECANICOS PARA PRODUCCION</strong></div>
+                                <div><strong>AUTOMATIZACION, CONTROL INDUSTRIAL E INSTALACIONES ELECTRICAS</strong></div>
+                                <div><strong>DISEÑO Y REPARACION DE CIRCUITOS ELECTRONICOS INDUSTRIALES</strong></div>
+                                <div style="margin-bottom: 0;"><strong>FABRICACION Y REPARACION DE TODO ELEMENTO METALMECANICO</strong></div>
                             </div>
                         </div>
                     </div>
