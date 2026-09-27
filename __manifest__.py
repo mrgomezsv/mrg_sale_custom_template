@@ -1,7 +1,7 @@
-{
+﻿{
     "name": "Plantilla de Presupuesto Personalizado de Venta",
     "summary": "Custom PDF quotation template for sale orders.",
-    "version": "19.0.1.0.0",
+    "version": "20.0.1.0.0",
     "category": "Sales/Reporting",
     "author": "Mario Roberto",
     "website": "https://mrgomezsv.github.io/",
