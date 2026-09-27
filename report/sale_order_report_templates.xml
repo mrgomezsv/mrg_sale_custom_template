@@ -637,7 +637,7 @@
                                                 <td t-if="display_discount" class="text-end" style="display: none;">
                                                     <span t-field="line.discount"/>
                                                 </td>
-                                                <t t-set="taxes" t-value="', '.join([(tax.description or tax.name) for tax in line.tax_id])"/>
+                                                <t t-set="taxes" t-value="', '.join([(tax.description or tax.name) for tax in (line.tax_ids if hasattr(line, 'tax_ids') else line.tax_id)])"/>
                                                 <td name="td_taxes" class="text-end" style="display: none;">
                                                     <span t-out="taxes">Tax 15%</span>
                                                 </td>
