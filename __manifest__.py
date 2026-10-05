@@ -1,4 +1,4 @@
-﻿{
+{
     "name": "Plantilla de Presupuesto Personalizado de Venta",
     "summary": "Custom PDF quotation template for sale orders.",
     "version": "20.0.1.0.0",
