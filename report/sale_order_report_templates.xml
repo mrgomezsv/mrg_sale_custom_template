@@ -248,6 +248,16 @@
                             border-top: 2px solid #000;
                         }
 
+                        /* Subsection Row Styling (Odoo 20) */
+                        .productos-table .subsection-row td {
+                            background-color: #fff;
+                            border-top: 1px solid #000;
+                        }
+
+                        .productos-table .subsection-row td[name="td_section_line"] {
+                            padding-left: 20px;
+                        }
+
                         /* Table Column Widths */
                         .th-cant {
                             width: 8%;
@@ -528,19 +538,16 @@
                                             <t t-if="doc.company_id.street2">, <span style="display:inline;" t-field="doc.company_id.street2"/></t>
                                             <t t-if="doc.company_id.city">, <span style="display:inline;" t-field="doc.company_id.city"/></t>
                                             <t t-if="doc.company_id.state_id">, <span style="display:inline;" t-field="doc.company_id.state_id.name"/></t>
-                                            <t t-if="doc.company_id.country_id">, <span style="display:inline;" t-esc="doc.company_id.country_id.name"/></t>
+                                            <t t-if="doc.company_id.country_id">, <span style="display:inline;" t-out="doc.company_id.country_id.name"/></t>
                                         </strong>
                                         <br/>
+                                        <!-- Odoo 20 eliminó res.company.mobile: solo queda el teléfono -->
                                         <span style="white-space: normal; display:inline-block; font-size: 15px;">
                                             <t t-if="doc.company_id.phone">
                                                 <strong>Tel: </strong><span style="display:inline;" t-field="doc.company_id.phone"/>
                                             </t>
-                                            <t t-if="doc.company_id.mobile">
-                                                <t t-if="doc.company_id.phone"> / </t>
-                                                <span style="display:inline;" t-field="doc.company_id.mobile"/>
-                                            </t>
                                             <t t-if="doc.company_id.email">
-                                                <t t-if="doc.company_id.phone or doc.company_id.mobile"> — </t>
+                                                <t t-if="doc.company_id.phone"> — </t>
                                                 <strong>Email: </strong><span style="display:inline;" t-field="doc.company_id.email"/>
                                             </t>
                                         </span>
@@ -554,11 +561,12 @@
                                 <div class="date-order-row">
                                     <div class="date-text; font-size: 15px;">
                                         <t t-if="doc.create_date">
-                                            <span t-esc="doc.create_date.strftime('%d/%m/%Y')"/>
+                                            <!-- Widget de fecha: muestra el día en la zona horaria del usuario, no en UTC -->
+                                            <span t-field="doc.create_date" t-options="{'widget': 'date', 'format': 'dd/MM/yyyy'}"/>
                                         </t>
                                     </div>
                                     <div class="order-text" t-if="doc.name">
-                                        <span><strong>Cotización:</strong> <t t-esc="doc.name"/></span>
+                                        <span><strong>Cotización:</strong> <t t-out="doc.name"/></span>
                                     </div>
                                 </div>
                                 <br/>
@@ -596,7 +604,8 @@
                                 </div>
                             </div>
 
-                            <table class="productos-table">
+                            <!-- o_main_table: ancla para las vistas que heredan el reporte estándar (sale_product_matrix) -->
+                            <table class="productos-table o_main_table">
                                 <thead>
                                     <tr>
                                         <th class="th-cant" name="th_quantity">Cant.</th>
@@ -614,55 +623,73 @@
                                     <t t-set="total_descuento" t-value="0"/>
                                     <t t-set="subtotal_sin_descuento" t-value="0"/>
 
+                                    <!-- Odoo 20: el texto de la línea (producto + descripción) está en label; name ya no trae el producto -->
                                     <t t-foreach="lines_to_report" t-as="line">
-                                        <t t-if="line.display_type == 'line_section'">
-                                            <tr class="section-row">
+                                        <!-- Los anticipos no se listan: la Suma y el TOTAL salen de los importes de Odoo -->
+                                        <t t-if="line.is_downpayment"/>
+
+                                        <t t-elif="line.display_type in ('line_section', 'line_subsection')">
+                                            <t t-set="row_class" t-value="'section-row subsection-row' if line.display_type == 'line_subsection' else 'section-row'"/>
+                                            <t t-if="line.collapse_composition">
+                                                <!-- Sus líneas no se imprimen: su descuento se acumula aquí para que la tabla cuadre con la Suma -->
+                                                <t t-set="section_values" t-value="line._get_custom_report_section_values()"/>
+                                                <t t-set="total_descuento" t-value="total_descuento + section_values['discount']"/>
+                                                <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + section_values['base']"/>
+                                            </t>
+                                            <!-- Si la sección oculta precios o composición, su total va en la fila de la sección -->
+                                            <tr t-if="(line.collapse_prices or line.collapse_composition) and not line._custom_report_hides_prices()" t-att-class="row_class">
+                                                <td class="td-cant"/>
+                                                <td class="td-desc" name="td_section_line">
+                                                    <span t-field="line.label"/>
+                                                </td>
+                                                <td class="td-unit"/>
+                                                <td t-if="display_discount" class="text-end" style="display: none;"/>
+                                                <td class="text-end" style="display: none;"/>
+                                                <td class="td-total">
+                                                    <span t-out="doc.format_currency(line._get_custom_report_section_values()['total'])"/>
+                                                </td>
+                                            </tr>
+                                            <tr t-else="" t-att-class="row_class">
                                                 <td name="td_section_line" colspan="4">
-                                                    <span t-field="line.name"/>
+                                                    <span t-field="line.label"/>
                                                 </td>
                                             </tr>
                                         </t>
 
-                                        <t t-elif="not line.display_type and not line.is_downpayment">
+                                        <t t-elif="not line.display_type">
+                                            <t t-set="hide_prices" t-value="line._custom_report_hides_prices()"/>
                                             <tr>
                                                 <td class="td-cant" name="td_quantity">
                                                     <span t-field="line.product_uom_qty"/>
                                                 </td>
                                                 <td class="td-desc" name="td_name">
-                                                    <span t-field="line.name"/>
+                                                    <span t-field="line.label"/>
                                                 </td>
                                                 <td class="td-unit" name="td_priceunit">
-                                                    <span t-field="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': doc.pricelist_id.currency_id}"/>
+                                                    <span t-if="not hide_prices" t-field="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
                                                 </td>
                                                 <td t-if="display_discount" class="text-end" style="display: none;">
                                                     <span t-field="line.discount"/>
                                                 </td>
-                                                <t t-set="taxes" t-value="', '.join([(tax.description or tax.name) for tax in (line.tax_ids if hasattr(line, 'tax_ids') else line.tax_id)])"/>
+                                                <t t-set="taxes" t-value="', '.join(tax.tax_label for tax in line.tax_ids if tax.tax_label)"/>
                                                 <td name="td_taxes" class="text-end" style="display: none;">
                                                     <span t-out="taxes">Tax 15%</span>
                                                 </td>
                                                 <td class="td-total" name="td_subtotal">
-                                                    <span t-esc="doc.format_currency(line.price_unit * line.product_uom_qty)"/>
+                                                    <span t-if="not hide_prices" t-out="doc.format_currency(line.price_unit * line.product_uom_qty)"/>
                                                 </td>
                                             </tr>
 
-                                            <t t-if="line.discount > 0">
-                                                <!-- Base sin descuento, reconstruida a partir del subtotal de la línea -->
-                                                <t t-set="base_sin_desc" t-value="(line.price_subtotal / (1 - (line.discount / 100.0))) if line.discount &lt; 100 else 0.0"/>
-                                                <t t-set="descuento_linea" t-value="base_sin_desc - line.price_subtotal"/>
-                                                <t t-set="total_descuento" t-value="total_descuento + descuento_linea"/>
-                                                <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + base_sin_desc"/>
-                                            </t>
-
-                                            <t t-if="line.discount == 0">
-                                                <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + line.price_subtotal"/>
-                                            </t>
+                                            <!-- Base sin descuento y descuento, reconstruidos a partir del subtotal de la línea -->
+                                            <t t-set="valores_descuento" t-value="line._get_custom_report_discount()"/>
+                                            <t t-set="subtotal_sin_descuento" t-value="subtotal_sin_descuento + valores_descuento[0]"/>
+                                            <t t-set="total_descuento" t-value="total_descuento + valores_descuento[1]"/>
                                         </t>
 
                                         <t t-elif="line.display_type == 'line_note'">
                                             <tr>
                                                 <td name="td_note_line" colspan="4">
-                                                    <span t-field="line.name"/>
+                                                    <span t-field="line.label"/>
                                                 </td>
                                             </tr>
                                         </t>
@@ -670,7 +697,8 @@
                                 </tbody>
 
                                 <tbody class="descuento-body">
-                                    <t t-if="display_discount and total_descuento > 0">
+                                    <!-- Se decide por el descuento acumulado (incluye las líneas que una sección oculta), no por display_discount -->
+                                    <t t-if="total_descuento > 0">
                                         <t t-set="porcentaje_descuento" t-value="round((total_descuento / subtotal_sin_descuento) * 100, 0) if subtotal_sin_descuento > 0 else 0"/>
                                         <tr class="descuento-row">
                                             <td class="td-cant"/>
@@ -685,7 +713,7 @@
                                         </tr>
                                     </t>
 
-                                    <t t-if="not display_discount or total_descuento == 0">
+                                    <t t-if="total_descuento == 0">
                                         <tr class="descuento-row">
                                             <td class="td-cant"/>
                                             <td class="td-desc descuento-text">
@@ -701,13 +729,13 @@
                                 </tbody>
                             </table>
 
-                            <!-- amount_untaxed ya incluye el descuento de las líneas -->
-                            <t t-set="amount_untaxed" t-value="sum(line.price_subtotal for line in lines_to_report if not line.display_type and not line.is_downpayment)"/>
+                            <!-- Base sin impuestos calculada por Odoo: ya incluye el descuento e incluye las líneas que el reporte oculta -->
+                            <t t-set="amount_untaxed" t-value="doc.amount_untaxed"/>
                             <t t-set="amount_descuento" t-value="total_descuento"/>
                             <!-- La 'Suma' mostrada corresponde al total después del descuento -->
                             <t t-set="subtotal_con_descuento" t-value="amount_untaxed"/>
-                            <!-- Obtener todos los impuestos ordenados dinámicamente usando valores calculados por Odoo -->
-                            <t t-set="all_taxes" t-value="doc.get_all_taxes_ordered(subtotal_con_descuento, 0)"/>
+                            <!-- Impuestos por grupo con los montos que calcula Odoo (mismo redondeo que el pedido y la factura) -->
+                            <t t-set="all_taxes" t-value="doc.get_all_taxes_ordered()"/>
                             <!-- Separar impuestos normales (IVA y otros) de retenciones -->
                             <t t-set="impuestos_normales" t-value="[tax for tax in all_taxes if tax['order'] != 2]"/>
                             <t t-set="retenciones" t-value="[tax for tax in all_taxes if tax['order'] == 2]"/>
@@ -724,16 +752,16 @@
                                             <tr>
                                                 <td class="summary-label">Suma</td>
                                                 <td>
-                                                    $ <span t-esc="doc.format_currency(subtotal_con_descuento)"/>
+                                                    $ <span t-out="doc.format_currency(subtotal_con_descuento)"/>
                                                 </td>
                                             </tr>
                                             <!-- Mostrar todos los impuestos en orden: IVA primero, luego otros, excluyendo retenciones -->
                                             <t t-foreach="all_taxes" t-as="tax">
                                                 <t t-if="tax['order'] != 2">
                                                     <tr>
-                                                        <td class="summary-label" t-esc="tax['name']"/>
+                                                        <td class="summary-label" t-out="tax['name']"/>
                                                         <td>
-                                                            $ <span t-esc="doc.format_currency(tax['amount'])"/>
+                                                            $ <span t-out="doc.format_currency(tax['amount'])"/>
                                                         </td>
                                                     </tr>
                                                 </t>
@@ -741,22 +769,22 @@
                                             <tr>
                                                 <td class="summary-label">Sub - total</td>
                                                 <td>
-                                                    $ <span t-esc="doc.format_currency(subtotal_con_impuestos)"/>
+                                                    $ <span t-out="doc.format_currency(subtotal_con_impuestos)"/>
                                                 </td>
                                             </tr>
                                             <!-- Mostrar retenciones después del subtotal -->
                                             <t t-foreach="retenciones" t-as="retencion">
                                                 <tr>
-                                                    <td class="summary-label" t-esc="retencion['name']"/>
+                                                    <td class="summary-label" t-out="retencion['name']"/>
                                                     <td>
-                                                        $ <span t-esc="doc.format_currency(retencion['amount'])"/>
+                                                        $ <span t-out="doc.format_currency(retencion['amount'])"/>
                                                     </td>
                                                 </tr>
                                             </t>
                                             <tr>
                                                 <td class="summary-label total-final">TOTAL</td>
                                                 <td class="total-final">
-                                                    $ <span t-esc="doc.format_currency(total_final)"/>
+                                                    $ <span t-out="doc.format_currency(total_final)"/>
                                                 </td>
                                             </tr>
                                         </table>
@@ -767,16 +795,18 @@
 
                         <div class="page-footer">
                             <div class="consideraciones" name="order_note" style="margin-top:0px; border: none;">
+                                <!-- Ancla vacía para las vistas que heredan el reporte estándar (delivery agrega la descripción del transportista antes de ella) -->
+                                <span name="order_note"/>
                                 <ul style="list-style-type: disc; padding-left: 20px; margin: 0;">
                                     <li><strong>Precio:</strong> Con IVA incluido.</li>
                                     <li t-if="doc.note" class="payment-condition-line">
-                                        <strong>Condición de pago:</strong> <span class="payment-condition-text" t-esc="doc.get_note_as_single_line()"/>
+                                        <strong>Condición de pago:</strong> <span class="payment-condition-text" t-out="doc.get_note_as_single_line()"/>
                                     </li>
                                     <li t-if="not doc.note">
                                         <strong>Condición de pago:</strong>
                                     </li>
                                     <li t-if="doc.get_delivery_days() is not None">
-                                        <strong>Tiempo de entrega:</strong> <t t-esc="doc.get_delivery_days()"/> días
+                                        <strong>Tiempo de entrega:</strong> <t t-out="doc.get_delivery_days()"/> días
                                     </li>
                                     <li t-if="doc.get_delivery_days() is None">
                                         <strong>Tiempo de entrega:</strong> 15 dias.

@@ -26,13 +26,12 @@ class SaleOrder(models.Model):
         return '{:,.2f}'.format(float(amount))
 
     def get_tax_groups_info(self):
-        """Obtiene información de los grupos de impuestos aplicados en el pedido"""
+        """Obtiene información de los grupos de impuestos aplicados en el pedido (tasas, no montos)"""
         tax_groups = {}
         for line in self.order_line:
-            if line.display_type or (hasattr(line, 'is_downpayment') and line.is_downpayment):
+            if line.display_type or line.is_downpayment:
                 continue
-            taxes = line.tax_ids if hasattr(line, 'tax_ids') else line.tax_id
-            for tax in taxes:
+            for tax in line.tax_ids:
                 if tax.tax_group_id:
                     group_id = tax.tax_group_id.id
                     if group_id not in tax_groups:
@@ -45,188 +44,134 @@ class SaleOrder(models.Model):
                         tax_groups[group_id]['taxes'].append(tax)
         return tax_groups
 
+    def _get_report_tax_groups(self):
+        """Grupos de impuestos del pedido con los montos que calcula Odoo.
+
+        Los montos salen de tax_totals: el mismo cálculo y redondeo del total del
+        pedido y de la factura. Antes se aplicaba la tasa del impuesto a la base de
+        todas las líneas, lo que daba otro monto cuando el impuesto (p. ej. la
+        retención) no aplica a todas las líneas.
+
+        :return: lista de dict con 'name', 'amount' (con el signo de Odoo),
+                 'order' (1 IVA, 2 retención, 3 otros) y 'taxes' (account.tax)
+        """
+        self.ensure_one()
+        currency = self.currency_id or self.company_id.currency_id
+        groups = []
+        for subtotal in (self.tax_totals or {}).get('subtotals', []):
+            for group_data in subtotal.get('tax_groups', []):
+                amount = group_data.get('tax_amount_currency', 0.0)
+                if currency.is_zero(amount):
+                    continue
+                name = group_data.get('group_name') or ''
+                taxes = self.env['account.tax'].browse(group_data.get('involved_tax_ids') or [])
+                group_name_lower = name.lower()
+                # Retención por el nombre del grupo o porque sus impuestos restan (tasa
+                # negativa), igual que el DTE identifica el IVA retenido.
+                if ('retención' in group_name_lower or 'retencion' in group_name_lower
+                        or (taxes and all(tax.amount < 0 for tax in taxes))):
+                    order = 2
+                elif 'iva' in group_name_lower:
+                    order = 1
+                else:
+                    order = 3
+                groups.append({
+                    'name': name,
+                    'amount': amount,
+                    'order': order,
+                    'taxes': taxes,
+                })
+        return groups
+
     def get_iva_info(self):
-        """Obtiene información del IVA (impuesto que no es retención)"""
-        tax_groups = self.get_tax_groups_info()
-        for group_info in tax_groups.values():
-            group_name = group_info['name'].lower()
-            if 'retención' not in group_name and 'retencion' not in group_name:
-                base = sum(line.price_subtotal for line in self.order_line 
-                          if not line.display_type and not (hasattr(line, 'is_downpayment') and line.is_downpayment))
-                avg_amount = sum(tax.amount for tax in group_info['taxes']) / len(group_info['taxes']) if group_info['taxes'] else 0
-                iva_amount = round(base * (avg_amount / 100.0), 2)
+        """Obtiene información del IVA (primer grupo que no es retención) con el monto calculado por Odoo"""
+        for group in self._get_report_tax_groups():
+            if group['order'] != 2:
+                taxes = group['taxes']
                 return {
-                    'name': group_info['name'],
-                    'amount': iva_amount,
-                    'tax_rate': avg_amount
+                    'name': group['name'],
+                    'amount': group['amount'],
+                    'tax_rate': sum(taxes.mapped('amount')) / len(taxes) if taxes else 0,
                 }
         return None
 
     def get_retencion_info(self, base_amount=None):
-        """Obtiene información de la retención IVA
-        
-        :param base_amount: Base sobre la cual calcular la retención (normalmente subtotal con IVA)
+        """Obtiene información de la retención con el monto calculado por Odoo (en positivo)
+
+        :param base_amount: se conserva por compatibilidad; el monto ya no se recalcula
+                            sobre una base, sale del cálculo de impuestos de Odoo
         """
-        tax_groups = self.get_tax_groups_info()
-        for group_info in tax_groups.values():
-            group_name = group_info['name'].lower()
-            if 'retención' in group_name or 'retencion' in group_name:
-                avg_amount = sum(abs(tax.amount) for tax in group_info['taxes']) / len(group_info['taxes']) if group_info['taxes'] else 0
-                if base_amount is None:
-                    base_amount = sum(line.price_total for line in self.order_line 
-                                     if not line.display_type and not (hasattr(line, 'is_downpayment') and line.is_downpayment))
-                retencion_amount = round(base_amount * (avg_amount / 100.0), 2)
+        for group in self._get_report_tax_groups():
+            if group['order'] == 2:
+                taxes = group['taxes']
                 return {
-                    'name': group_info['name'],
-                    'amount': retencion_amount,
-                    'tax_rate': avg_amount
+                    'name': group['name'],
+                    'amount': abs(group['amount']),
+                    'tax_rate': sum(abs(rate) for rate in taxes.mapped('amount')) / len(taxes) if taxes else 0,
                 }
         return None
 
-    def get_all_taxes_ordered(self, base_amount, subtotal_with_taxes):
-        """Obtiene todos los impuestos individuales ordenados: IVA primero, Retención IVA después, luego los demás
-        
-        Usa los valores calculados por Odoo agrupados por tax_group_id para mantener el redondeo correcto.
-        
-        :param base_amount: Base sin impuestos (subtotal después de descuentos)
-        :param subtotal_with_taxes: Subtotal con todos los impuestos aplicados (no usado)
-        :return: Lista de diccionarios con información de impuestos ordenados (cada impuesto por separado)
+    def get_all_taxes_ordered(self, base_amount=None, subtotal_with_taxes=None):
+        """Obtiene los impuestos del pedido por grupo, ordenados: IVA primero, retenciones después, luego los demás
+
+        Los montos son los que calcula Odoo (ver _get_report_tax_groups). Las retenciones
+        se devuelven en positivo porque el PDF las resta del subtotal.
+
+        :param base_amount: se conserva por compatibilidad; ya no se usa
+        :param subtotal_with_taxes: se conserva por compatibilidad; ya no se usa
+        :return: lista de dict con 'name', 'amount' y 'order'
         """
-        from collections import defaultdict
-        from odoo.tools import float_round
-        
-        order_lines = self.order_line.filtered(lambda x: not x.display_type and not (hasattr(x, 'is_downpayment') and x.is_downpayment))
-        if not order_lines:
-            return []
-        
-        tax_groups_info = {}
-        tax_totals = getattr(self, 'tax_totals', None)
-        
-        if tax_totals and isinstance(tax_totals, dict) and 'subtotals' in tax_totals:
-            for subtotal in tax_totals.get('subtotals', []):
-                for group_data in subtotal.get('tax_groups', []):
-                    group_id = group_data.get('id')
-                    if group_id:
-                        tax_group_name = group_data.get('group_name', '')
-                        tax_group_amount = group_data.get('tax_amount_currency', 0.0)
-                        group_name_lower = tax_group_name.lower()
-                        order = 1
-                        if 'retención' in group_name_lower or 'retencion' in group_name_lower:
-                            order = 2
-                        elif 'iva' in group_name_lower:
-                            order = 1
-                        else:
-                            order = 3
-                        if group_id in tax_groups_info:
-                            tax_groups_info[group_id]['amount'] += tax_group_amount
-                        else:
-                            tax_groups_info[group_id] = {
-                                'name': tax_group_name,
-                                'amount': tax_group_amount,
-                                'order': order,
-                            }
-        elif hasattr(self.env['account.tax'], '_prepare_tax_totals'):
-            try:
-                tax_totals = self.env['account.tax']._prepare_tax_totals(
-                    [line._convert_to_tax_base_line_dict() for line in order_lines],
-                    self.currency_id or self.company_id.currency_id,
-                )
-                groups_by_subtotal = tax_totals.get('groups_by_subtotal', {}) if tax_totals else {}
-                for subtotal_key, groups_data in groups_by_subtotal.items():
-                    for group_data in groups_data:
-                        group_id = group_data.get('tax_group_id')
-                        if group_id:
-                            tax_group_name = group_data.get('tax_group_name', '')
-                            tax_group_amount = group_data.get('tax_group_amount', 0.0)
-                            group_name_lower = tax_group_name.lower()
-                            order = 1
-                            if 'retención' in group_name_lower or 'retencion' in group_name_lower:
-                                order = 2
-                            elif 'iva' in group_name_lower:
-                                order = 1
-                            else:
-                                order = 3
-                            if group_id in tax_groups_info:
-                                tax_groups_info[group_id]['amount'] += tax_group_amount
-                            else:
-                                tax_groups_info[group_id] = {
-                                    'name': tax_group_name,
-                                    'amount': tax_group_amount,
-                                    'order': order
-                                }
-            except Exception:
-                tax_groups_info = {}
+        currency = self.currency_id or self.company_id.currency_id
+        taxes_list = [{
+            'name': group['name'],
+            'amount': currency.round(abs(group['amount']) if group['order'] == 2 else group['amount']),
+            'order': group['order'],
+        } for group in self._get_report_tax_groups()]
+        return sorted(taxes_list, key=lambda x: (x['order'], x['name']))
 
-        if not tax_groups_info:
-            tax_groups_amount = defaultdict(float)
-            tax_groups_data = {}
-            for line in order_lines:
-                line_base = line.price_subtotal
-                if line_base > 0:
-                    taxes = line.tax_ids if hasattr(line, 'tax_ids') else line.tax_id
-                    for tax in taxes:
-                        if tax.tax_group_id:
-                            group_id = tax.tax_group_id.id
-                            tax_compute = tax.with_company(line.company_id).compute_all(
-                                line_base,
-                                currency=line.order_id.currency_id,
-                                quantity=1.0,
-                                product=line.product_id,
-                                partner=line.order_id.partner_id
-                            )
-                            tax_amount_line = sum(t.get('amount', 0.0) for t in tax_compute.get('taxes', []))
-                            tax_groups_amount[group_id] += tax_amount_line
-                            if group_id not in tax_groups_data:
-                                group_name_lower = tax.tax_group_id.name.lower()
-                                order = 1
-                                if 'retención' in group_name_lower or 'retencion' in group_name_lower:
-                                    order = 2
-                                elif 'iva' in group_name_lower:
-                                    order = 1
-                                else:
-                                    order = 3
-                                tax_groups_data[group_id] = {
-                                    'name': tax.tax_group_id.name,
-                                    'order': order,
-                                    'tax': tax
-                                }
-            for group_id, amount in tax_groups_amount.items():
-                if group_id in tax_groups_data and amount != 0:
-                    tax_groups_info[group_id] = {
-                        'name': tax_groups_data[group_id]['name'],
-                        'amount': amount,
-                        'order': tax_groups_data[group_id]['order'],
-                        'tax': tax_groups_data[group_id].get('tax')
-                    }
-        
-        taxes_list = []
-        for group_id, group_info in tax_groups_info.items():
-            if group_info['amount'] != 0:
-                if group_info['order'] == 2:
-                    retencion_tax = group_info.get('tax')
-                    if not retencion_tax:
-                        for line in order_lines:
-                            taxes = line.tax_ids if hasattr(line, 'tax_ids') else line.tax_id
-                            for tax in taxes:
-                                if tax.tax_group_id and tax.tax_group_id.id == group_id:
-                                    retencion_tax = tax
-                                    break
-                            if retencion_tax:
-                                break
-                    if retencion_tax:
-                        tax_amount = float_round(base_amount * (abs(retencion_tax.amount) / 100.0), precision_digits=2)
-                    else:
-                        tax_amount = float_round(group_info['amount'], precision_digits=2)
-                else:
-                    tax_amount = float_round(group_info['amount'], precision_digits=2)
-                
-                taxes_list.append({
-                    'name': group_info['name'],
-                    'amount': tax_amount,
-                    'order': group_info['order']
-                })
 
-        taxes_list = sorted(taxes_list, key=lambda x: (x['order'], x['name']))
-        return taxes_list
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    def _get_custom_report_discount(self):
+        """Base sin descuento y descuento de la línea para el PDF personalizado.
+
+        Se reconstruyen desde price_subtotal (lo que calcula Odoo) para que la 'Suma'
+        del PDF cuadre con el subtotal real del pedido.
+
+        :return: tupla (base sin descuento, descuento)
+        """
+        self.ensure_one()
+        if not self.discount:
+            return self.price_subtotal, 0.0
+        if self.discount < 100:
+            base = self.price_subtotal / (1 - (self.discount / 100.0))
+        else:
+            # Con 100 % de descuento el subtotal es 0: la base es el precio por la cantidad
+            base = self.price_unit * self.product_uom_qty
+        return base, base - self.price_subtotal
+
+    def _get_custom_report_section_values(self):
+        """Totales de las líneas de una sección o subsección, incluidas las que el
+        reporte oculta (Odoo 20: 'ocultar composición')."""
+        self.ensure_one()
+        values = {'total': 0.0, 'base': 0.0, 'discount': 0.0}
+        for line in self._get_section_lines():
+            if line.display_type or line.is_downpayment:
+                continue
+            base, discount = line._get_custom_report_discount()
+            values['total'] += line.price_unit * line.product_uom_qty
+            values['base'] += base
+            values['discount'] += discount
+        return values
+
+    def _custom_report_hides_prices(self):
+        """True si la sección o subsección que contiene la línea oculta sus precios
+        (Odoo 20: 'ocultar precios'); en ese caso el total va en la fila de la sección."""
+        self.ensure_one()
+        section = self.parent_id
+        return bool(section.collapse_prices or (
+            section.display_type == 'line_subsection' and section.parent_id.collapse_prices
+        ))
 
 
